@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <Authors>Pandatech</Authors>
+        <Copyright>MIT</Copyright>
+        <PackageIcon>pandatech.png</PackageIcon>
+        <PackageReadmeFile>Readme.md</PackageReadmeFile>
+        <Version>0.0.1</Version>
+        <PackageId>Pandatech.AuditTrail</PackageId>
+        <PackageTags>Pandatech, library,  </PackageTags>
+        <Title>AuditTrail</Title>
+        <Description>Collection audit data from Entity Framwework Core ChangeTracker</Description>
+        <RepositoryUrl>https://github.com/PandaTechAM/be-lib-audittrail</RepositoryUrl>
+        <PackageReleaseNotes>Added package</PackageReleaseNotes>
+        <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
+    </PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.0" />
+	</ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\..\pandatech.png" Pack="true" PackagePath="\" />
+        <None Include="..\..\Readme.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+</Project>
