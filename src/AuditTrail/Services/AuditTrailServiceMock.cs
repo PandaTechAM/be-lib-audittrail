@@ -2,6 +2,7 @@
 using AuditTrail.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace AuditTrail.Services;
 
@@ -10,11 +11,18 @@ namespace AuditTrail.Services;
 /// </summary>
 public class AuditTrailServiceMock<TPermission> : IAuditTrailService<TPermission>
 {
-    public List<AuditTrailCommanModel<TPermission>> AuditTransactionData { get; set; }
-
-    public Task<int> AuditTrialSaveChangesAsync(DbContext context, CancellationToken cancellationToken = default)
+    public Task<int> AuditTrilSaveChangesAsync(DbContext context, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(0);
+    }
+
+    public void ClearSaveData() { }
+
+    public void ClearTransactionData() { }
+
+    public Task FinishSaveChanges(DbContextEventData eventData)
+    {
+        return Task.CompletedTask;
     }
 
     public IEnumerable<AuditTrailEntityData<TPermission>> GetEntityTrackedPropertiesBeforeSave(ChangeTracker changeTracker)
@@ -22,10 +30,17 @@ public class AuditTrailServiceMock<TPermission> : IAuditTrailService<TPermission
         return null!;
     }
 
-    public Task SendToConsumerAsync(IEnumerable<AuditTrailCommanModel<TPermission>> auditTrial, CancellationToken cancellationToken = default)
+    public Task SendToConsumerAsync(IEnumerable<AuditTrailCommanModel<TPermission>> auditTrail, CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
     }
+
+    public Task SendToConsumerAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
+    public void StartCollectingSaveData(DbContextEventData eventData) { }
 
     public IEnumerable<AuditTrailCommanModel<TPermission>> UpdateEntityPropertiesAfterSave(IEnumerable<AuditTrailEntityData<TPermission>> auditEntitiesData, DbContext context)
     {

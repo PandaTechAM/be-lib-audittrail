@@ -1,21 +1,21 @@
 ﻿using AuditTrail.Abstraction;
-using AuditTrail.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AuditTrail.Interceptors;
-public class AuditTrailSaveInterceptor<TPermission>(IAuditTrailService<TPermission> auditTrialService) : SaveChangesInterceptor
+public class AuditTrailSaveInterceptor<TPermission>(IHttpContextAccessor  httpContextAccessor) : SaveChangesInterceptor
 {
-    private List<AuditTrailEntityData<TPermission>> auditTrailEntityDatas = [];
-
+    private readonly IHttpContextAccessor httpContextAccessor = httpContextAccessor;
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
-        StartCollectingAuditData(eventData);
+        StartCollectingSaveData(eventData);
         return base.SavingChanges(eventData, result);
     }
 
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {
-        StartCollectingAuditData(eventData);
+        StartCollectingSaveData(eventData);
         return base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
@@ -33,58 +33,56 @@ public class AuditTrailSaveInterceptor<TPermission>(IAuditTrailService<TPermissi
 
     public override void SaveChangesCanceled(DbContextEventData eventData)
     {
-        ClearAuditData();
+        ClearSaveData();
         base.SaveChangesCanceled(eventData);
     }
 
     public override Task SaveChangesCanceledAsync(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
-        ClearAuditData();
+        ClearSaveData();
         return base.SaveChangesCanceledAsync(eventData, cancellationToken);
     }
 
     public override void SaveChangesFailed(DbContextErrorEventData eventData)
     {
-        ClearAuditData();
+        ClearSaveData();
         base.SaveChangesFailed(eventData);
     }
 
     public override Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
     {
-        ClearAuditData();
+        ClearSaveData();
         return base.SaveChangesFailedAsync(eventData, cancellationToken);
     }
 
-    public void StartCollectingAuditData(DbContextEventData eventData)
+    private void StartCollectingSaveData(DbContextEventData eventData)
     {
-        if (eventData.Context != null)
-        {
-            IEnumerable<AuditTrailEntityData<TPermission>> auditData = auditTrialService.GetEntityTrackedPropertiesBeforeSave(eventData.Context.ChangeTracker);
-            auditTrailEntityDatas.AddRange(auditData);
-        }
+        var auditTrailService = GetAuditTrailService(httpContextAccessor);
+
+        auditTrailService?.StartCollectingSaveData(eventData);
     }
 
-    public async Task FinishSaveChanges(DbContextEventData eventData)
+    private Task FinishSaveChanges(DbContextEventData eventData)
     {
-        if (eventData.Context != null)
+        var auditTrailService = GetAuditTrailService(httpContextAccessor);
+
+        if (auditTrailService != null)
         {
-            IEnumerable<AuditTrailCommanModel<TPermission>> updatedData = auditTrialService.UpdateEntityPropertiesAfterSave(auditTrailEntityDatas, eventData.Context);
-
-            if (eventData.Context.Database.CurrentTransaction == null)
-            {
-                await auditTrialService.SendToConsumerAsync(updatedData);
-            }
-            else
-            {
-                auditTrialService.AuditTransactionData.AddRange(updatedData);
-            }
-
-            ClearAuditData();
+            return auditTrailService.FinishSaveChanges(eventData);
         }
+
+        return Task.CompletedTask;
     }
 
-    public void ClearAuditData()
+    private void ClearSaveData()
     {
-        auditTrailEntityDatas.Clear();
+        var auditTrailService = GetAuditTrailService(httpContextAccessor);
+
+        auditTrailService?.ClearSaveData();
+    }
+
+    private IAuditTrailService<TPermission>? GetAuditTrailService(IHttpContextAccessor httpContextAccessor)
+    {
+        return httpContextAccessor?.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission>>();
     }
 }

@@ -4,6 +4,7 @@ using AuditTrail.Fluent.Abstraction;
 using AuditTrail.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 using System.Reflection;
@@ -12,29 +13,20 @@ using System.Security;
 namespace AuditTrail.Services;
 public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
 {
-    private readonly IAuditTrailConsumer<TPermission> _auditTrialConsumer;
+    private readonly IAuditTrailConsumer<TPermission> _auditTrailConsumer;
     private readonly IServiceProvider _serviceProvider;
     private readonly IAuditTrailAssemblyProvider _auditAssemblyProvider;
     private readonly ILogger<AuditTrailService<TPermission>> _logger;
 
-    public List<AuditTrailCommanModel<TPermission>> AuditTransactionData { get; set; } = [];
+    private List<AuditTrailCommanModel<TPermission>> _auditTransactionData = [];
+    private List<AuditTrailEntityData<TPermission>> _auditTrailSaveData = [];
 
-    public AuditTrailService(IAuditTrailConsumer<TPermission> auditTrialConsumer, IServiceProvider serviceProvider, IAuditTrailAssemblyProvider auditAssemblyProvider, ILogger<AuditTrailService<TPermission>> logger)
+    public AuditTrailService(IAuditTrailConsumer<TPermission> audtTrailConsumer, IServiceProvider serviceProvider, IAuditTrailAssemblyProvider auditAssemblyProvider, ILogger<AuditTrailService<TPermission>> logger)
     {
-        _auditTrialConsumer = auditTrialConsumer ?? throw new ArgumentNullException(nameof(auditTrialConsumer));
+        _auditTrailConsumer = audtTrailConsumer ?? throw new ArgumentNullException(nameof(audtTrailConsumer));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _auditAssemblyProvider = auditAssemblyProvider ?? throw new ArgumentNullException(nameof(auditAssemblyProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-
-    public Task SendToConsumerAsync(IEnumerable<AuditTrailCommanModel<TPermission>> auditTrial, CancellationToken cancellationToken = default)
-    {
-        if (auditTrial?.Any() == true)
-        {
-            return _auditTrialConsumer.ConsumeAsync(auditTrial, cancellationToken);
-        }
-
-        return Task.CompletedTask;
     }
 
     public IEnumerable<AuditTrailEntityData<TPermission>> GetEntityTrackedPropertiesBeforeSave(ChangeTracker changeTracker)
@@ -86,7 +78,7 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
         foreach (AuditTrailEntityData<TPermission> auditEntityData in auditEntitiesData)
         {
             var entityId = auditEntityData.EntityId;
-            var entity = auditEntityData.AuditTrialEntity;
+            var entity = auditEntityData.AuditTrailEntity;
             if (auditEntityData.EntityState == EntityState.Added)
             {
                 // For new added entities, we need to update the EntityId with the new Id/id's after SaveChanges
@@ -98,7 +90,7 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
                 Entity = entity,
                 RequiredReadPermission = auditEntityData.Permission,
                 EntityId = entityId,
-                EntityName = entity.GetType().GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? auditEntityData.AuditTrialEntity.GetType().Name,
+                EntityName = entity.GetType().GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? auditEntityData.AuditTrailEntity.GetType().Name,
                 Action = GetActionFromEntityState(auditEntityData.EntityState),
                 DataJson = System.Text.Json.JsonSerializer.Serialize(auditEntityData.ModifiedProperties),
                 Timestamp = DateTime.UtcNow,
@@ -110,11 +102,55 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
         return auditEntitiesUpdatedData;
     }
 
+    public async Task SendToConsumerAsync(CancellationToken cancellationToken = default)
+    {
+        await _auditTrailConsumer.ConsumeAsync(_auditTransactionData, cancellationToken);
+        ClearTransactionData();
+    }
+
+    public async Task FinishSaveChanges(DbContextEventData eventData)
+    {
+        if (eventData?.Context != null)
+        {
+            var updatedData = UpdateEntityPropertiesAfterSave(_auditTrailSaveData, eventData.Context);
+
+            if (eventData.Context.Database.CurrentTransaction == null)
+            {
+                await SendToConsumerAsync(updatedData);
+            }
+            else
+            {
+                _auditTransactionData.AddRange(updatedData);
+            }
+
+            ClearSaveData();
+        }
+    }
+
+    public void StartCollectingSaveData(DbContextEventData eventData)
+    {
+        if (eventData?.Context != null)
+        {
+            var auditData = GetEntityTrackedPropertiesBeforeSave(eventData.Context.ChangeTracker);
+            _auditTrailSaveData.AddRange(auditData);
+        }
+    }
+
+    public void ClearTransactionData()
+    {
+        _auditTransactionData.Clear();
+    }
+
+    public void ClearSaveData()
+    {
+        _auditTrailSaveData.Clear();
+    }
+
     protected long? GetEntityId(object entity, ChangeTracker changeTracker)
     {
         try
         {
-            object? entityId = changeTracker.Entries()?
+            var entityId = changeTracker.Entries()?
             .Where(e => e.Entity == entity)!
             .FirstOrDefault()?
             .Properties?
@@ -174,5 +210,11 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
             EntityState.Deleted => AuditActionType.Delete,
             _ => throw new SecurityException("Invalid Entity State"),
         };
+    }
+
+    private async Task SendToConsumerAsync(IEnumerable<AuditTrailCommanModel<TPermission>> auditTraildata, CancellationToken cancellationToken = default)
+    {
+        await _auditTrailConsumer.ConsumeAsync(auditTraildata, cancellationToken);
+        ClearTransactionData();
     }
 }

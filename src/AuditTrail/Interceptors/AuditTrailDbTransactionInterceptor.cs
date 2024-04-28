@@ -1,11 +1,15 @@
 ﻿
 using AuditTrail.Abstraction;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using System.Data.Common;
 
 namespace AuditTrail.Interceptors;
-public class AuditTrailDbTransactionInterceptor<TPermission>(IAuditTrailService<TPermission> auditTrailService) : DbTransactionInterceptor
+public class AuditTrailDbTransactionInterceptor<TPermission>(IHttpContextAccessor httpContextAccessor) : DbTransactionInterceptor
 {
+    private readonly IHttpContextAccessor httpContextAccessor = httpContextAccessor;
+
     public override void TransactionCommitted(DbTransaction transaction, TransactionEndEventData eventData)
     {
         SendToConsumer().GetAwaiter().GetResult();
@@ -20,25 +24,37 @@ public class AuditTrailDbTransactionInterceptor<TPermission>(IAuditTrailService<
 
     public override void TransactionRolledBack(DbTransaction transaction, TransactionEndEventData eventData)
     {
-        ClearAuditData();
+        ClearTransactionData();
         base.TransactionRolledBack(transaction, eventData);
     }
 
     public override Task TransactionRolledBackAsync(DbTransaction transaction, TransactionEndEventData eventData, CancellationToken cancellationToken = default)
     {
-        ClearAuditData();
+        ClearTransactionData();
         return base.TransactionRolledBackAsync(transaction, eventData, cancellationToken);
     }
 
-    public async Task SendToConsumer()
+    private Task SendToConsumer()
     {
-        await auditTrailService.SendToConsumerAsync(auditTrailService.AuditTransactionData);
+        var auditTrailService = GetAuditTrailService(httpContextAccessor);
 
-        ClearAuditData();
+        if (auditTrailService != null)
+        {
+            return auditTrailService.SendToConsumerAsync();
+        }
+
+        return Task.CompletedTask;
     }
 
-    public void ClearAuditData()
+    private void ClearTransactionData()
     {
-        auditTrailService.AuditTransactionData.Clear();
+        var auditTrailService = GetAuditTrailService(httpContextAccessor);
+
+        auditTrailService?.ClearTransactionData();
+    }
+
+    private IAuditTrailService<TPermission>? GetAuditTrailService(IHttpContextAccessor httpContextAccessor)
+    {
+        return httpContextAccessor?.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission>>();
     }
 }
