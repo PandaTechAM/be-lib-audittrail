@@ -18,8 +18,8 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
     private readonly IAuditTrailAssemblyProvider _auditAssemblyProvider;
     private readonly ILogger<AuditTrailService<TPermission>> _logger;
 
-    private List<AuditTrailCommanModel<TPermission>> _auditTransactionData = [];
-    private List<AuditTrailEntityData<TPermission>> _auditTrailSaveData = [];
+    private readonly List<AuditTrailCommanModel<TPermission>> _auditTransactionData = [];
+    private readonly List<AuditTrailEntityData<TPermission>> _auditTrailSaveData = [];
 
     public AuditTrailService(IAuditTrailConsumer<TPermission> audtTrailConsumer, IServiceProvider serviceProvider, IAuditTrailAssemblyProvider auditAssemblyProvider, ILogger<AuditTrailService<TPermission>> logger)
     {
@@ -36,11 +36,6 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
             throw new ArgumentNullException(nameof(_auditAssemblyProvider.AssemblyScanResult));
         }
 
-        if (!_auditAssemblyProvider.AssemblyScanResult.Any(s => s.InterfaceType.GetGenericArguments()[1] == typeof(TPermission)))
-        {
-            _logger.LogWarning($"Not found any registered EntityRule in {nameof(AuditTrailAssemblyProvider)}");
-        }
-
         var changes = changeTracker.Entries()
             .Where(e => (e.State == EntityState.Modified || e.State == EntityState.Added || e.State == EntityState.Deleted)
             && _auditAssemblyProvider.AssemblyScanResult
@@ -49,7 +44,7 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
 
         List<AuditTrailEntityData<TPermission>> auditEntities = [];
 
-        foreach (EntityEntry? entity in changes)
+        foreach (var entity in changes)
         {
             var auditEntity = entity.Entity;
 
@@ -74,8 +69,8 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
     public IEnumerable<AuditTrailCommanModel<TPermission>> UpdateEntityPropertiesAfterSave(IEnumerable<AuditTrailEntityData<TPermission>> auditEntitiesData,
         DbContext context)
     {
-        List<AuditTrailCommanModel<TPermission>> auditEntitiesUpdatedData = new List<AuditTrailCommanModel<TPermission>>();
-        foreach (AuditTrailEntityData<TPermission> auditEntityData in auditEntitiesData)
+        var auditEntitiesUpdatedData = new List<AuditTrailCommanModel<TPermission>>();
+        foreach (var auditEntityData in auditEntitiesData)
         {
             var entityId = auditEntityData.EntityId;
             var entity = auditEntityData.AuditTrailEntity;
@@ -85,7 +80,7 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
                 entityId = GetEntityId(entity, context.ChangeTracker);
             }
 
-            AuditTrailCommanModel<TPermission> auditModel = new AuditTrailCommanModel<TPermission>
+            var auditModel = new AuditTrailCommanModel<TPermission>
             {
                 Entity = entity,
                 RequiredReadPermission = auditEntityData.Permission,
@@ -104,8 +99,11 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
 
     public async Task SendToConsumerAsync(CancellationToken cancellationToken = default)
     {
-        await _auditTrailConsumer.ConsumeAsync(_auditTransactionData, cancellationToken);
-        ClearTransactionData();
+        if (_auditTransactionData.Any())
+        {
+            await _auditTrailConsumer.ConsumeAsync(_auditTransactionData, cancellationToken);
+            ClearTransactionData();
+        }
     }
 
     public async Task FinishSaveChanges(DbContextEventData eventData)
@@ -178,7 +176,7 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
         var ruleService = _serviceProvider.GetService(closedGenericType);
 
         var entityRule = ruleService as IEntityRule<TPermission>;
-        TPermission permission = default!;
+        TPermission permission;
         if (entityRule is null)
         {
             throw new ArgumentNullException($"Missing service for rule {closedGenericType.FullName}");
@@ -214,7 +212,10 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
 
     private async Task SendToConsumerAsync(IEnumerable<AuditTrailCommanModel<TPermission>> auditTraildata, CancellationToken cancellationToken = default)
     {
-        await _auditTrailConsumer.ConsumeAsync(auditTraildata, cancellationToken);
-        ClearTransactionData();
+        if (auditTraildata.Any())
+        {
+            await _auditTrailConsumer.ConsumeAsync(auditTraildata, cancellationToken);
+            ClearTransactionData();
+        }
     }
 }

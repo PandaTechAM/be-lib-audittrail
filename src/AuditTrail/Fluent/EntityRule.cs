@@ -18,10 +18,9 @@ public abstract class EntityRule<TEntity, TPermission> : IEntityRule<TEntity, TP
 
     public IRuleBulder<TEntity, TPermission, TProperty> RuleFor<TProperty>(Expression<Func<TEntity, TProperty>> expression)
     {
-        var propertyRule = PropertyRule<TEntity, TProperty>.Create(expression);
-        var rule = propertyRule as IPropertyRule<TEntity>;
-        Rules.Add(rule!);
-        return new RuleBulder<TEntity, TPermission, TProperty>(propertyRule, this);
+        var rule = PropertyRule<TEntity, TProperty>.Create(expression);
+        Rules.Add(rule);
+        return new RuleBulder<TEntity, TPermission, TProperty>(rule, this);
     }
 
     public virtual void ExecuteRules(string propertyName, object value, Dictionary<string, object> modifiedProperties)

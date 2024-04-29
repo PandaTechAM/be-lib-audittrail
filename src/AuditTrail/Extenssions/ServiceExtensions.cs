@@ -19,7 +19,7 @@ public static class ServiceExtensions
     /// <param name="filter">Optional filter that allows certain types to be skipped from registration.</param>
     /// <param name="includeInternalTypes">Include internal AuditTrail. The default is false.</param>
     /// <returns>AssemblyScanner</returns>
-    public static AssemblyScanner CreateAuditTrailAssemblyScannerFromAssembly(this IServiceCollection services, Assembly assembly, ServiceLifetime lifetime = ServiceLifetime.Scoped, Func<AssemblyScanner.AssemblyScanResult, bool> filter = null, bool includeInternalTypes = false)
+    public static AssemblyScanner CreateAuditTrailAssemblyScannerFromAssembly(this IServiceCollection services, Assembly assembly, ServiceLifetime lifetime = ServiceLifetime.Scoped, Func<AssemblyScanner.AssemblyScanResult, bool> filter = null!, bool includeInternalTypes = false)
     {
         var assemblyScanner = AssemblyScanner.FindTypeInAssembly(assembly, includeInternalTypes);
         assemblyScanner.ForEach(scanResult => services.AddScanResult(scanResult, lifetime, filter));
@@ -36,7 +36,7 @@ public static class ServiceExtensions
     /// <param name="filter">Optional filter that allows certain types to be skipped from registration.</param>
     /// <param name="includeInternalTypes">Include internal AuditTrail. The default is false.</param>
     /// <returns></returns>
-    public static IServiceCollection AddAuditTrailFromAssembly(this IServiceCollection services, Assembly assembly, ServiceLifetime lifetime = ServiceLifetime.Scoped, Func<AssemblyScanner.AssemblyScanResult, bool> filter = null, bool includeInternalTypes = false)
+    public static IServiceCollection AddAuditTrailFromAssembly(this IServiceCollection services, Assembly assembly, ServiceLifetime lifetime = ServiceLifetime.Scoped, Func<AssemblyScanner.AssemblyScanResult, bool> filter = null!, bool includeInternalTypes = false)
     {
         AssemblyScanner
             .FindTypeInAssembly(assembly, includeInternalTypes)

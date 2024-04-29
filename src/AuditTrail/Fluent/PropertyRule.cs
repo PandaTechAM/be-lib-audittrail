@@ -27,7 +27,7 @@ public class PropertyRule<TEntity, TProperty> : IPropertyRule<TEntity, TProperty
             result = item.ExecuteRule(result.name, result.value);
             if (result is null || result.Name is null)
             {
-                return result;
+                return null!;
             }
         }
 

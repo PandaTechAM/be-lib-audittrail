@@ -83,6 +83,6 @@ public class AuditTrailSaveInterceptor<TPermission>(IHttpContextAccessor  httpCo
 
     private IAuditTrailService<TPermission>? GetAuditTrailService(IHttpContextAccessor httpContextAccessor)
     {
-        return httpContextAccessor?.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission>>();
+        return httpContextAccessor.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission>>();
     }
 }

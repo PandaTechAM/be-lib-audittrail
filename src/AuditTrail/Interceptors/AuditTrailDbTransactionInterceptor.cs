@@ -55,6 +55,6 @@ public class AuditTrailDbTransactionInterceptor<TPermission>(IHttpContextAccesso
 
     private IAuditTrailService<TPermission>? GetAuditTrailService(IHttpContextAccessor httpContextAccessor)
     {
-        return httpContextAccessor?.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission>>();
+        return httpContextAccessor.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission>>();
     }
 }
