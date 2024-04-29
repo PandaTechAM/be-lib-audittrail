@@ -97,13 +97,9 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
         return auditEntitiesUpdatedData;
     }
 
-    public async Task SendToConsumerAsync(CancellationToken cancellationToken = default)
+    public Task SendToConsumerAsync(CancellationToken cancellationToken = default)
     {
-        if (_auditTransactionData.Any())
-        {
-            await _auditTrailConsumer.ConsumeAsync(_auditTransactionData, cancellationToken);
-            ClearTransactionData();
-        }
+        return SendToConsumerAsync(_auditTransactionData, cancellationToken);
     }
 
     public async Task FinishSaveChanges(DbContextEventData eventData)
@@ -212,10 +208,17 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
 
     private async Task SendToConsumerAsync(IEnumerable<AuditTrailCommanModel<TPermission>> auditTraildata, CancellationToken cancellationToken = default)
     {
-        if (auditTraildata.Any())
+        try
         {
-            await _auditTrailConsumer.ConsumeAsync(auditTraildata, cancellationToken);
-            ClearTransactionData();
+            if (auditTraildata.Any())
+            {
+                await _auditTrailConsumer.ConsumeAsync(auditTraildata, cancellationToken);
+                ClearTransactionData();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Send to audittrailconsumer failed", ex);
         }
     }
 }

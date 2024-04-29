@@ -8,11 +8,11 @@
         <Copyright>MIT</Copyright>
         <PackageIcon>pandatech.png</PackageIcon>
         <PackageReadmeFile>Readme.md</PackageReadmeFile>
-        <Version>0.0.4</Version>
+        <Version>0.0.5</Version>
         <PackageId>Pandatech.AuditTrail</PackageId>
-        <PackageTags>Pandatech, library,  </PackageTags>
+        <PackageTags>Pandatech, library, Tracking, Entiies, Audit</PackageTags>
         <Title>AuditTrail</Title>
-        <Description>Collect required audit data from Entity Framwework Core ChangeTracker</Description>
+        <Description>Collect essential audit data from Entity Framework Core's ChangeTracker.</Description>
         <RepositoryUrl>https://github.com/PandaTechAM/be-lib-audittrail</RepositoryUrl>
         <PackageReleaseNotes>Added package</PackageReleaseNotes>
         <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
