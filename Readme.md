@@ -31,7 +31,7 @@ public class AuditTrailConsumer<TPermission>() : IAuditTrailConsumer<TPermission
 builder.Services.AddAuditTrailFromAssembly(typeof(AssemblyReference).Assembly);
 builder.Services.AddScoped<IAuditTrailService<PermissionType?>, AuditTrailService<PermissionType?>>();
 builder.Services.AddScoped<IAuditTrailConsumer<PermissionType?>, AuditTrailConsumer<PermissionType?>>();
-//Optional only properies require to decrypt. 
+//Optional only for properties that encrypted to byte[] and require Decryption.
 builder.Services.AddScoped<IAuditTrailDecryption, AuditTrailDecryption>(); 
 
 services.AddSingleton<AuditTrailSaveInterceptor<PermissionType?>>();
