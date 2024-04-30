@@ -31,6 +31,30 @@ public static class ServiceExtensions
     /// Adds all AuditTrail entity roles from specified assembly
     /// </summary>
     /// <param name="services">The collection of services</param>
+    /// <param name="assemblies">The assemblies to scan</param>
+    /// <param name="lifetime">The lifetime of the AuditTrail. The default is scoped (per-request in web application)</param>
+    /// <param name="filter">Optional filter that allows certain types to be skipped from registration.</param>
+    /// <param name="includeInternalTypes">Include internal AuditTrail. The default is false.</param>
+    /// <returns></returns>
+	public static IServiceCollection AddAuditTrailFromAssemblies(this IServiceCollection services, IEnumerable<Assembly> assemblies, ServiceLifetime lifetime = ServiceLifetime.Scoped, Func<AssemblyScanner.AssemblyScanResult, bool> filter = null, bool includeInternalTypes = false)
+    {
+        List<AssemblyScanner> scanners = [];
+        foreach (var assembly in assemblies)
+        {
+            var assemblyScanner = AssemblyScanner.FindTypeInAssembly(assembly, includeInternalTypes);
+            assemblyScanner.ForEach(scanResult => services.AddScanResult(scanResult, lifetime, filter));
+            scanners.Add(assemblyScanner);
+        }
+
+        services.AddSingleton<IAuditTrailAssemblyProvider>(new AuditTrailMultiAssemblyProvider(scanners));
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds all AuditTrail entity roles from specified assembly
+    /// </summary>
+    /// <param name="services">The collection of services</param>
     /// <param name="assembly">The assembly to scan</param>
     /// <param name="lifetime">The lifetime of the AuditTrail. The default is scoped (per-request in web application)</param>
     /// <param name="filter">Optional filter that allows certain types to be skipped from registration.</param>

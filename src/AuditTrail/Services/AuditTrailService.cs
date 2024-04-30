@@ -37,7 +37,7 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
         }
 
         var changes = changeTracker.Entries()
-            .Where(e => (e.State == EntityState.Modified || e.State == EntityState.Added || e.State == EntityState.Deleted)
+            .Where(e => (e.State is EntityState.Modified or EntityState.Added or EntityState.Deleted)
             && _auditAssemblyProvider.AssemblyScanResult
             .Select(s => s.InterfaceType.GetGenericArguments()[0])
             .Contains(e.Entity.GetType()));
