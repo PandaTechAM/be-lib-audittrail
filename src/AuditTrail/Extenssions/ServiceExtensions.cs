@@ -46,7 +46,7 @@ public static class ServiceExtensions
             scanners.Add(assemblyScanner);
         }
 
-        services.AddSingleton<IAuditTrailAssemblyProvider>(new AuditTrailMultiAssemblyProvider(scanners));
+        services.AddSingleton<IAuditTrailAssemblyProvider>(new AuditTrailAssemblyProvider(scanners));
 
         return services;
     }
@@ -103,7 +103,7 @@ public static class ServiceExtensions
 
     private static AssemblyScanner AddAssemblyToProvider(this AssemblyScanner assemblyScans, IServiceCollection services)
     {
-        services.AddSingleton<IAuditTrailAssemblyProvider>(new AuditTrailAssemblyProvider(assemblyScans));
+        services.AddSingleton<IAuditTrailAssemblyProvider>(new AuditTrailAssemblyProvider([assemblyScans]));
         return assemblyScans;
     }
 }

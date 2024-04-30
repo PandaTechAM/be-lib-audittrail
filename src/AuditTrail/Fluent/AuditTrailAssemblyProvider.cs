@@ -2,7 +2,8 @@
 using static AuditTrail.Fluent.AssemblyScanner;
 
 namespace AuditTrail.Fluent;
-public class AuditTrailAssemblyProvider(IEnumerable<AssemblyScanResult> assemblyScanResult) : IAuditTrailAssemblyProvider
+public class AuditTrailAssemblyProvider(IEnumerable<AssemblyScanner> assemblyScaners) : IAuditTrailAssemblyProvider
 {
-    public IEnumerable<AssemblyScanResult> AssemblyScanResult { get; } = assemblyScanResult;
+    public IEnumerable<AssemblyScanner> AssemblyScanners { get; } = assemblyScaners;
+    public IEnumerable<AssemblyScanResult> AssemblyScanResult => AssemblyScanners.SelectMany(s => s);
 }
