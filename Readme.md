@@ -89,4 +89,4 @@ Composite keys are not supported.
 
 ## License
 
-Pandatech.*** is licensed under the MIT License.
+Pandatech.AuditTrail is licensed under the MIT License.
