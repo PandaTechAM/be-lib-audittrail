@@ -1,6 +1,4 @@
-# Pandatech.***
-
-## Introduction
+## Pandatech.AuditTrail
 Pandatech.AuditTrail is a tool meticulously crafted to gather vital entity data from the change tracker post DbContext SaveChanges operation.
 
 ## Features
