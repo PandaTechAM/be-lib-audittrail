@@ -28,23 +28,13 @@ public class AuditTrailConsumer<TPermission>() : IAuditTrailConsumer<TPermission
 2. Add required services.
 
 ```csharp
-builder.Services.AddAuditTrailFromAssembly(typeof(AssemblyReference).Assembly);
-builder.Services.AddScoped<IAuditTrailService<PermissionType?>, AuditTrailService<PermissionType?>>();
-builder.Services.AddScoped<IAuditTrailConsumer<PermissionType?>, AuditTrailConsumer<PermissionType?>>();
-//Optional only for properties that encrypted to byte[] and require Decryption.
-builder.Services.AddScoped<IAuditTrailDecryption, AuditTrailDecryption>(); 
-
-services.AddSingleton<AuditTrailSaveInterceptor<PermissionType?>>();
-services.AddSingleton<AuditTrailDbTransactionInterceptor<PermissionType?>>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddAuditTrail<PermissionType?, AuditTrailConsumer<PermissionType?>>(typeof(Registration).Assembly);
 
 services.AddDbContextPool<PostgresContext>((sp, options) =>
 {
-   var auditSaveInterceptor = sp.GetRequiredService<AuditTrailSaveInterceptor<PermissionType?>>();
-   var auditDbTransactionInterceptor = sp.GetRequiredService<AuditTrailDbTransactionInterceptor<PermissionType?>>();
-
    options.UseNpgsql(connectionString)
-   .AddInterceptors(auditSaveInterceptor)
-   .AddInterceptors(auditDbTransactionInterceptor);
+   .UseAuditTrail<PermissionType?>(sp);
 });
 ```
 
