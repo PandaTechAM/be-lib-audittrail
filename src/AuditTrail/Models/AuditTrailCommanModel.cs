@@ -2,7 +2,7 @@
 public class AuditTrailCommanModel<TPermission>
 {
     public object Entity { get; set; } = null!;
-    public TPermission RequiredReadPermission { get; set; }
+    public TPermission? RequiredReadPermission { get; set; }
     public DateTime Timestamp { get; set; }
     public AuditActionType Action { get; set; }
     public string EntityName { get; set; } = null!;

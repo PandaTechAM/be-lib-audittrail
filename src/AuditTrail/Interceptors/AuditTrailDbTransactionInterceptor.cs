@@ -34,6 +34,11 @@ public class AuditTrailDbTransactionInterceptor<TPermission>(IHttpContextAccesso
         return base.TransactionRolledBackAsync(transaction, eventData, cancellationToken);
     }
 
+    protected virtual IAuditTrailService<TPermission>? GetAuditTrailService(IHttpContextAccessor httpContextAccessor)
+    {
+        return httpContextAccessor.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission>>();
+    }
+
     private Task SendToConsumer()
     {
         var auditTrailService = GetAuditTrailService(httpContextAccessor);
@@ -51,10 +56,5 @@ public class AuditTrailDbTransactionInterceptor<TPermission>(IHttpContextAccesso
         var auditTrailService = GetAuditTrailService(httpContextAccessor);
 
         auditTrailService?.ClearTransactionData();
-    }
-
-    private IAuditTrailService<TPermission>? GetAuditTrailService(IHttpContextAccessor httpContextAccessor)
-    {
-        return httpContextAccessor.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission>>();
     }
 }

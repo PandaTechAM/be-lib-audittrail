@@ -31,9 +31,11 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
 
     public IEnumerable<AuditTrailEntityData<TPermission>> GetEntityTrackedPropertiesBeforeSave(ChangeTracker changeTracker)
     {
+        List<AuditTrailEntityData<TPermission>> auditEntities = [];
+
         if (_auditAssemblyProvider.AssemblyScanResult is null)
         {
-            throw new ArgumentNullException(nameof(_auditAssemblyProvider.AssemblyScanResult));
+            return auditEntities;
         }
 
         var changes = changeTracker.Entries()
@@ -41,8 +43,6 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
             && _auditAssemblyProvider.AssemblyScanResult
             .Select(s => s.InterfaceType.GetGenericArguments()[0])
             .Contains(e.Entity.GetType()));
-
-        List<AuditTrailEntityData<TPermission>> auditEntities = [];
 
         foreach (var entity in changes)
         {
@@ -218,7 +218,7 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Send to audittrailconsumer failed", ex);
+            _logger.LogError($"Send to audittrailconsumer failed {ex}");
         }
     }
 }

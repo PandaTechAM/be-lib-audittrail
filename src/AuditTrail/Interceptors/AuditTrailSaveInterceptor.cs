@@ -55,6 +55,11 @@ public class AuditTrailSaveInterceptor<TPermission>(IHttpContextAccessor  httpCo
         return base.SaveChangesFailedAsync(eventData, cancellationToken);
     }
 
+    protected virtual IAuditTrailService<TPermission>? GetAuditTrailService(IHttpContextAccessor httpContextAccessor)
+    {
+        return httpContextAccessor.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission>>();
+    }
+
     private void StartCollectingSaveData(DbContextEventData eventData)
     {
         var auditTrailService = GetAuditTrailService(httpContextAccessor);
@@ -79,10 +84,5 @@ public class AuditTrailSaveInterceptor<TPermission>(IHttpContextAccessor  httpCo
         var auditTrailService = GetAuditTrailService(httpContextAccessor);
 
         auditTrailService?.ClearSaveData();
-    }
-
-    private IAuditTrailService<TPermission>? GetAuditTrailService(IHttpContextAccessor httpContextAccessor)
-    {
-        return httpContextAccessor.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission>>();
     }
 }

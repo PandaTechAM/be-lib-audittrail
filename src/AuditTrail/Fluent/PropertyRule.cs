@@ -6,7 +6,7 @@ public class PropertyRule<TEntity, TProperty> : IPropertyRule<TEntity, TProperty
 {
     private readonly List<IPropertyRule<TEntity, TProperty>> _propertyRules = new();
 
-    private readonly string _propertyName;
+    private readonly string _propertyName = "";
     public string PropertyName => _propertyName;
 
     public IReadOnlyList<IPropertyRule<TEntity, TProperty>> ProperyRules => _propertyRules.AsReadOnly();
