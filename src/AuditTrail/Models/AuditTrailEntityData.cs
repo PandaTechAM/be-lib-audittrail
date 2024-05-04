@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
 namespace AuditTrail.Models;
-public class AuditTrailEntityData<TPermission>(object auditTrailData, IReadOnlyDictionary<string, object> modifiedProperties, EntityState entityState, long? entityId, TPermission permission)
+public record AuditTrailEntityData<TPermission>(object auditTrailData, IReadOnlyDictionary<string, object> modifiedProperties, EntityState entityState, long? entityId, TPermission permission)
 {
     public object AuditTrailEntity { get; } = auditTrailData;
     public IReadOnlyDictionary<string, object> ModifiedProperties { get; } = modifiedProperties;

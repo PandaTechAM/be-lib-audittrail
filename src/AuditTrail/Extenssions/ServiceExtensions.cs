@@ -5,15 +5,13 @@ using AuditTrail.Fluent;
 using AuditTrail.Fluent.Abstraction;
 using AuditTrail.Interceptors;
 using AuditTrail.Services;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using System.Security;
+using Microsoft.AspNetCore.Http.Abstractions;
 
 public static class ServiceExtensions
 {
@@ -60,7 +58,7 @@ public static class ServiceExtensions
         bool includeInternalTypes = false)
         where TConsumer : class, IAuditTrailConsumer<TPermission>
     {
-        services.AddAuditTrailFromAssemblies(assemblies, lifetime, filter, includeInternalTypes);
+        services.AddAuditTrailFromAssemblies<TPermission>(assemblies, lifetime, filter, includeInternalTypes);
         services.AddScoped<IAuditTrailService<TPermission>, AuditTrailService<TPermission>>();
         services.AddScoped(typeof(IAuditTrailConsumer<TPermission>), typeof(TConsumer));
 
@@ -123,7 +121,7 @@ public static class ServiceExtensions
     /// <param name="filter">Optional filter that allows certain types to be skipped from registration.</param>
     /// <param name="includeInternalTypes">Include internal AuditTrail. The default is false.</param>
     /// <returns></returns>
-	public static IServiceCollection AddAuditTrailFromAssemblies(this IServiceCollection services, IEnumerable<Assembly> assemblies, ServiceLifetime lifetime = ServiceLifetime.Scoped, Func<AssemblyScanner.AssemblyScanResult, bool> filter = null!, bool includeInternalTypes = false)
+	public static IServiceCollection AddAuditTrailFromAssemblies<TPermission>(this IServiceCollection services, IEnumerable<Assembly> assemblies, ServiceLifetime lifetime = ServiceLifetime.Scoped, Func<AssemblyScanner.AssemblyScanResult, bool> filter = null!, bool includeInternalTypes = false)
     {
         ArgumentNullException.ThrowIfNull(assemblies);
 
@@ -135,7 +133,7 @@ public static class ServiceExtensions
             scanners.Add(assemblyScanner);
         }
 
-        services.AddSingleton<IAuditTrailAssemblyProvider>(new AuditTrailAssemblyProvider(scanners));
+        services.AddSingleton<IAuditTrailAssemblyProvider<TPermission>>(new AuditTrailAssemblyProvider<TPermission>(scanners));
 
         return services;
     }
@@ -160,13 +158,13 @@ public static class ServiceExtensions
     /// <param name="filter">Optional filter that allows certain types to be skipped from registration.</param>
     /// <param name="includeInternalTypes">Include internal AuditTrail. The default is false.</param>
     /// <returns></returns>
-    public static IServiceCollection AddAuditTrailFromAssembly(this IServiceCollection services, Assembly assembly, ServiceLifetime lifetime = ServiceLifetime.Scoped, Func<AssemblyScanner.AssemblyScanResult, bool> filter = null!, bool includeInternalTypes = false)
+    public static IServiceCollection AddAuditTrailFromAssembly<TPermission>(this IServiceCollection services, Assembly assembly, ServiceLifetime lifetime = ServiceLifetime.Scoped, Func<AssemblyScanner.AssemblyScanResult, bool> filter = null!, bool includeInternalTypes = false)
     {
         ArgumentNullException.ThrowIfNull(assembly);
 
         AssemblyScanner
             .FindTypeInAssembly(assembly, includeInternalTypes)
-            .AddAssemblyToProvider(services)
+            .AddAssemblyToProvider<TPermission>(services)
             .ForEach(scanResult => services.AddScanResult(scanResult, lifetime, filter));
 
         return services;
@@ -203,9 +201,9 @@ public static class ServiceExtensions
         return services;
     }
 
-    private static AssemblyScanner AddAssemblyToProvider(this AssemblyScanner assemblyScans, IServiceCollection services)
+    private static AssemblyScanner AddAssemblyToProvider<TPermission>(this AssemblyScanner assemblyScans, IServiceCollection services)
     {
-        services.AddSingleton<IAuditTrailAssemblyProvider>(new AuditTrailAssemblyProvider([assemblyScans]));
+        services.AddSingleton<IAuditTrailAssemblyProvider<TPermission>>(new AuditTrailAssemblyProvider<TPermission>([assemblyScans]));
         return assemblyScans;
     }
 }

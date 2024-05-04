@@ -1,12 +1,12 @@
 ﻿namespace AuditTrail.Models;
-public class AuditTrailCommanModel<TPermission>
+public record AuditTrailCommanModel<TPermission>
 {
-    public object Entity { get; set; } = null!;
+    public required object Entity { get; set; } = null!;
     public TPermission? RequiredReadPermission { get; set; }
-    public DateTime Timestamp { get; set; }
-    public AuditActionType Action { get; set; }
-    public string EntityName { get; set; } = null!;
+    public required DateTime Timestamp { get; set; }
+    public required AuditActionType Action { get; set; }
+    public required string EntityName { get; set; } = null!;
     public long? EntityId { get; set; }
-    public string DataJson { get; set; } = null!;
-    public IReadOnlyDictionary<string, object> ModifiedProperties { get; set; } = null!;
+    public required string DataJson { get; set; } = null!;
+    public required IReadOnlyDictionary<string, object> ModifiedProperties { get; set; } = null!;
 }

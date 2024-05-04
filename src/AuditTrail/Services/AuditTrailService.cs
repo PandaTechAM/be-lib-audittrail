@@ -15,13 +15,13 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
 {
     private readonly IAuditTrailConsumer<TPermission> _auditTrailConsumer;
     private readonly IServiceProvider _serviceProvider;
-    private readonly IAuditTrailAssemblyProvider _auditAssemblyProvider;
+    private readonly IAuditTrailAssemblyProvider<TPermission> _auditAssemblyProvider;
     private readonly ILogger<AuditTrailService<TPermission>> _logger;
 
     private readonly List<AuditTrailCommanModel<TPermission>> _auditTransactionData = [];
     private readonly List<AuditTrailEntityData<TPermission>> _auditTrailSaveData = [];
 
-    public AuditTrailService(IAuditTrailConsumer<TPermission> audtTrailConsumer, IServiceProvider serviceProvider, IAuditTrailAssemblyProvider auditAssemblyProvider, ILogger<AuditTrailService<TPermission>> logger)
+    public AuditTrailService(IAuditTrailConsumer<TPermission> audtTrailConsumer, IServiceProvider serviceProvider, IAuditTrailAssemblyProvider<TPermission> auditAssemblyProvider, ILogger<AuditTrailService<TPermission>> logger)
     {
         _auditTrailConsumer = audtTrailConsumer ?? throw new ArgumentNullException(nameof(audtTrailConsumer));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
