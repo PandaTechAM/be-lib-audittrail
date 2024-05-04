@@ -58,6 +58,7 @@ public static class ServiceExtensions
         bool includeInternalTypes = false)
         where TConsumer : class, IAuditTrailConsumer<TPermission>
     {
+        services.AddHttpContextAccessor();
         services.AddAuditTrailFromAssemblies<TPermission>(assemblies, lifetime, filter, includeInternalTypes);
         services.AddScoped<IAuditTrailService<TPermission>, AuditTrailService<TPermission>>();
         services.AddScoped(typeof(IAuditTrailConsumer<TPermission>), typeof(TConsumer));

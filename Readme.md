@@ -26,7 +26,6 @@ Install-Package Pandatech.AuditTrail
 ```
 ## 1.3 Usage
  - Implement `IAuditTrailConsumer` interface.
-- Add AddHttpContextAccessor.
 - Add AddAuditTrail services by providing `IAuditTrailConsumer` implementation.
 - Create a rules derived from `EntityRule`.
 
@@ -45,7 +44,6 @@ public class AuditTrailConsumer<TPermission>() : IAuditTrailConsumer<TPermission
 ### 1.3.2. Add Services Example:
 
 ```csharp
-builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuditTrail<PermissionType?, AuditTrailConsumer<PermissionType?>>(typeof(Registration).Assembly);
 
 services.AddDbContextPool<PostgresContext>((sp, options) =>
