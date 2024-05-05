@@ -140,26 +140,14 @@ public class AuditTrailService<TPermission> : IAuditTrailService<TPermission>
         _auditTrailSaveData.Clear();
     }
 
-    protected long? GetEntityId(object entity, ChangeTracker changeTracker)
+    protected string? GetEntityId(object entity, ChangeTracker changeTracker)
     {
-        try
-        {
-            var entityId = changeTracker.Entries()?
-            .Where(e => e.Entity == entity)!
-            .FirstOrDefault()?
-            .Properties?
-            .First(p => p?.Metadata?.IsPrimaryKey() ?? false)?
-            .CurrentValue;
-
-            return entityId is null ? null : Convert.ToInt64(entityId);
-        }
-        catch
-        {
-            //For Key less or non numeric entitiy id retutn null
-            _logger.LogWarning($"Only numeric id supported id type: {entity.GetType().FullName}");
-        }
-
-        return null;
+        return changeTracker.Entries()?
+        .FirstOrDefault(e => e.Entity == entity)?
+        .Properties?
+        .First(p => p?.Metadata?.IsPrimaryKey() ?? false)?
+        .CurrentValue?
+        .ToString();
     }
 
     protected TrackedPropertiesWithPermission<TPermission> GetTrackedPropertiesWithValues(IEnumerable<PropertyEntry> properties, object entity)

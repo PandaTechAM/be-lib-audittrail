@@ -35,8 +35,9 @@ To be able to retrive modified entities data after save operation.
 ```csharp
 public class AuditTrailConsumer<TPermission>() : IAuditTrailConsumer<TPermission>
 {
-   public Task ConsumeAsync(IEnumerable<AuditTrailCommanModel<TPermission>> entities, CancellationToken cancellationToken = default)
+   public Task ConsumeAsync(IEnumerable<AuditTrailCommanModel<TPermission>> entitiesData, CancellationToken cancellationToken = default)
    {
+        // Handle tracked entites here.
    }
 }
 ```
@@ -46,10 +47,9 @@ public class AuditTrailConsumer<TPermission>() : IAuditTrailConsumer<TPermission
 ```csharp
 builder.Services.AddAuditTrail<PermissionType?, AuditTrailConsumer<PermissionType?>>(typeof(Registration).Assembly);
 
-services.AddDbContextPool<PostgresContext>((sp, options) =>
+services.AddDbContextPool<SomeDbContext>((sp, options) =>
 {
-   options.UseNpgsql(connectionString)
-   .UseAuditTrail<PermissionType?>(sp);
+   options.UseAuditTrail<PermissionType?>(sp);
 });
 ```
 
@@ -102,8 +102,7 @@ public static class RuleExtensions
 
 ## 1.4 Limitations
 
-- Only numeric entity IDs are assigned during SaveChanges.
-- In case of composite keys only first key will be selected.
+- In case of composite keys only first key will be selected as entityId.
 
 ## 1.5. Contributing
 

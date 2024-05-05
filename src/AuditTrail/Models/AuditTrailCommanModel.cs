@@ -6,7 +6,7 @@ public record AuditTrailCommanModel<TPermission>
     public required DateTime Timestamp { get; set; }
     public required AuditActionType Action { get; set; }
     public required string EntityName { get; set; } = null!;
-    public long? EntityId { get; set; }
+    public string? EntityId { get; set; }
     public required string DataJson { get; set; } = null!;
     public required IReadOnlyDictionary<string, object> ModifiedProperties { get; set; } = null!;
 }
