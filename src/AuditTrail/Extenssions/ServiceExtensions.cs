@@ -211,7 +211,7 @@ public static class ServiceExtensions
     }
 
     public static DbContextOptionsBuilder UseAuditTrail<TPermission, TInstance>(this DbContextOptionsBuilder optionsBuilder, IServiceProvider serviceProvider)
-        where TInstance : DbContext
+        where TInstance : class
     {
         var auditSaveInterceptor = serviceProvider.GetRequiredService<AuditTrailSaveInterceptor<TPermission, TInstance>>();
         var auditDbTransactionInterceptor = serviceProvider.GetRequiredService<AuditTrailDbTransactionInterceptor<TPermission, TInstance>>();
