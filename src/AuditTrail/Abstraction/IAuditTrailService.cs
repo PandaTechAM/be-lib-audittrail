@@ -15,3 +15,9 @@ public interface IAuditTrailService<TPermission>
     void ClearSaveData();
     void StartCollectingSaveData(DbContextEventData eventData);
 }
+
+public interface IAuditTrailService<TPermission, TInstance> 
+    : IAuditTrailService<TPermission>
+{
+}
+

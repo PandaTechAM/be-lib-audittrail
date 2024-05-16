@@ -1,6 +1,5 @@
-﻿using System.Linq.Expressions;
-using AuditTrail.Fluent.Abstraction;
-using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
+﻿using AuditTrail.Fluent.Abstraction;
+using System.Linq.Expressions;
 
 namespace AuditTrail.Fluent;
 
@@ -42,4 +41,11 @@ public abstract class EntityRule<TEntity, TPermission> : IEntityRule<TEntity, TP
             }
         }
     }
+}
+
+public abstract class EntityRule<TEntity, TPermission, TInstance> :
+    EntityRule<TEntity, TPermission>, IEntityRule<TEntity, TPermission, TInstance>
+    where TEntity : class
+    where TInstance : class
+{
 }

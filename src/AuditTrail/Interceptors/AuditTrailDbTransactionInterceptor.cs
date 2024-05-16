@@ -58,3 +58,12 @@ public class AuditTrailDbTransactionInterceptor<TPermission>(IHttpContextAccesso
         auditTrailService?.ClearTransactionData();
     }
 }
+
+public class AuditTrailDbTransactionInterceptor<TPermission, TInstance>(IHttpContextAccessor httpContextAccessor)
+    : AuditTrailDbTransactionInterceptor<TPermission>(httpContextAccessor)
+{
+    protected override IAuditTrailService<TPermission>? GetAuditTrailService(IHttpContextAccessor httpContextAccessor)
+    {
+        return httpContextAccessor.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission, TInstance>>();
+    }
+}

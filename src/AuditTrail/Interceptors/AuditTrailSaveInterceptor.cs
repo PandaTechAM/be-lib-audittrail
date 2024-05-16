@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AuditTrail.Interceptors;
-public class AuditTrailSaveInterceptor<TPermission>(IHttpContextAccessor  httpContextAccessor) : SaveChangesInterceptor
+public class AuditTrailSaveInterceptor<TPermission>(IHttpContextAccessor httpContextAccessor) : SaveChangesInterceptor
 {
     private readonly IHttpContextAccessor httpContextAccessor = httpContextAccessor;
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
@@ -84,5 +84,14 @@ public class AuditTrailSaveInterceptor<TPermission>(IHttpContextAccessor  httpCo
         var auditTrailService = GetAuditTrailService(httpContextAccessor);
 
         auditTrailService?.ClearSaveData();
+    }
+}
+
+public class AuditTrailSaveInterceptor<TPermission, TInstance>(IHttpContextAccessor httpContextAccessor)
+    : AuditTrailSaveInterceptor<TPermission>(httpContextAccessor)
+{
+    protected override IAuditTrailService<TPermission>? GetAuditTrailService(IHttpContextAccessor httpContextAccessor)
+    {
+        return httpContextAccessor.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission, TInstance>>();
     }
 }
