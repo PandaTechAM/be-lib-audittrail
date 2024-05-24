@@ -13,7 +13,7 @@ public sealed class AuditTrailService<TPermission>(
 {
 }
 
-public sealed class AuditTrailServiceBase<TPermission, TInstance>(
+public sealed class AuditTrailService<TPermission, TInstance>(
     IAuditTrailConsumer<TPermission, TInstance> AudtTrailConsumer,
     IServiceProvider ServiceProvider,
     IAuditTrailAssemblyProvider<TInstance> AuditAssemblyProvider,

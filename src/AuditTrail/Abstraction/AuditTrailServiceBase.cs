@@ -39,7 +39,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         return changes;
     }
 
-    public IEnumerable<AuditTrailEntityData<TPermission>> GetEntityTrackedPropertiesBeforeSave(ChangeTracker changeTracker)
+    public async Task<IEnumerable<AuditTrailEntityData<TPermission>>> GetEntityTrackedPropertiesBeforeSave(ChangeTracker changeTracker, CancellationToken cancellationToken = default)
     {
         List<AuditTrailEntityData<TPermission>> auditEntities = [];
 
@@ -50,24 +50,39 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
         var changes = GetChanges(changeTracker);
 
-        foreach (var entity in changes)
+        foreach (var entityEntry in changes)
         {
-            var auditEntity = entity!.Entity;
+            var auditEntity = entityEntry!.Entity;
 
             TrackedPropertiesWithPermission<TPermission> entityProperies;
-            if (entity.State == EntityState.Added)
+            if (entityEntry.State == EntityState.Added)
             {
-                entityProperies = GetTrackedPropertiesWithValues(entity.Properties, auditEntity);
+                entityProperies = GetTrackedPropertiesWithValues(entityEntry.Properties, auditEntity);
             }
             else
             {
-                entityProperies = GetTrackedPropertiesWithValues(entity.Properties.Where(prop => prop.IsModified), auditEntity);
+                entityProperies = GetTrackedPropertiesWithValues(entityEntry.Properties.Where(prop => prop.IsModified), auditEntity);
             }
 
             // For deleted entities, we can't dinamically get id/id's, so we need to get it before SaveChanges
             var id = GetEntityId(auditEntity, changeTracker);
-            auditEntities.Add(new AuditTrailEntityData<TPermission>(auditEntity, entityProperies.TrackedProperties, entity.State, id, entityProperies.Permission));
+
+            var auditData = new AuditTrailEntityData<TPermission>
+            {
+                Entity = entityEntry.Entity,
+                RequiredReadPermission = entityProperies.Permission,
+                EntityId = id,
+                EntityName = entityEntry.GetType().GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? entityEntry.Entity.GetType().Name,
+                Action = GetActionFromEntityState(entityEntry.State),
+                DataJson = System.Text.Json.JsonSerializer.Serialize(entityProperies.TrackedProperties),
+                Timestamp = DateTime.UtcNow,
+                ModifiedProperties = entityProperies.TrackedProperties,
+            };
+
+            auditEntities.Add(auditData);
         }
+
+        await _auditTrailConsumer.BeforeSaveAsync(auditEntities, cancellationToken);
 
         return auditEntities;
     }
@@ -76,11 +91,11 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         DbContext context)
     {
         var auditEntitiesUpdatedData = new List<AuditTrailCommanModel<TPermission>>();
-        foreach (var auditEntityData in auditEntitiesData)
+        foreach (var entityData in auditEntitiesData)
         {
-            var entityId = auditEntityData.EntityId;
-            var entity = auditEntityData.AuditTrailEntity;
-            if (auditEntityData.EntityState == EntityState.Added)
+            var entityId = entityData.EntityId;
+            var entity = entityData.Entity;
+            if (entityData.Action == AuditActionType.Create)
             {
                 // For new added entities, we need to update the EntityId with the new Id/id's after SaveChanges
                 entityId = GetEntityId(entity, context.ChangeTracker);
@@ -88,14 +103,15 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
             var auditModel = new AuditTrailCommanModel<TPermission>
             {
+                UniqueId = entityData.UniqueId,
                 Entity = entity,
-                RequiredReadPermission = auditEntityData.Permission,
+                RequiredReadPermission = entityData.RequiredReadPermission,
                 EntityId = entityId,
-                EntityName = entity.GetType().GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? auditEntityData.AuditTrailEntity.GetType().Name,
-                Action = GetActionFromEntityState(auditEntityData.EntityState),
-                DataJson = System.Text.Json.JsonSerializer.Serialize(auditEntityData.ModifiedProperties),
-                Timestamp = DateTime.UtcNow,
-                ModifiedProperties = auditEntityData.ModifiedProperties,
+                EntityName = entityData.EntityName,
+                Action = entityData.Action,
+                DataJson = entityData.DataJson,
+                Timestamp = entityData.Timestamp,
+                ModifiedProperties = entityData.ModifiedProperties,
             };
             auditEntitiesUpdatedData.Add(auditModel);
         }
@@ -127,11 +143,11 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         }
     }
 
-    public void StartCollectingSaveData(DbContextEventData eventData)
+    public async Task StartCollectingSaveData(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
         if (eventData?.Context != null)
         {
-            var auditData = GetEntityTrackedPropertiesBeforeSave(eventData.Context.ChangeTracker);
+            var auditData = await GetEntityTrackedPropertiesBeforeSave(eventData.Context.ChangeTracker, cancellationToken);
             _auditTrailSaveData.AddRange(auditData);
         }
     }

@@ -119,7 +119,7 @@ public static class ServiceExtensions
     {
         services.AddHttpContextAccessor();
         services.AddAuditTrailFromAssemblies<TInstance>(assemblies, lifetime, filter, includeInternalTypes);
-        services.AddScoped<IAuditTrailService<TPermission, TInstance>, AuditTrailServiceBase<TPermission, TInstance>>();
+        services.AddScoped<IAuditTrailService<TPermission, TInstance>, AuditTrailService<TPermission, TInstance>>();
         services.AddScoped(typeof(IAuditTrailConsumer<TPermission, TInstance>), typeof(TConsumer));
         services.AddScoped(typeof(IAuditTrailDecryption), typeof(TDecryption));
 

@@ -1,11 +1,15 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
 namespace AuditTrail.Models;
-public record AuditTrailEntityData<TPermission>(object auditTrailData, IReadOnlyDictionary<string, object> modifiedProperties, EntityState entityState, string? entityId, TPermission permission)
+public record AuditTrailEntityData<TPermission>
 {
-    public object AuditTrailEntity { get; } = auditTrailData;
-    public IReadOnlyDictionary<string, object> ModifiedProperties { get; } = modifiedProperties;
-    public EntityState EntityState { get; } = entityState;
-    public string? EntityId { get; } = entityId;
-    public TPermission Permission { get; } = permission;
+    public Guid UniqueId { get; init; } = Guid.NewGuid();
+    public required object Entity { get; init; }
+    public IReadOnlyDictionary<string, object> ModifiedProperties { get; init; }
+    public string? EntityId { get; init; }
+    public TPermission? RequiredReadPermission { get; init; }
+    public required DateTime Timestamp { get; init; }
+    public required AuditActionType Action { get; init; }
+    public required string EntityName { get; init; }
+    public required string DataJson { get; init; }
 }

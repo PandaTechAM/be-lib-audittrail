@@ -1,6 +1,7 @@
 ﻿namespace AuditTrail.Models;
 public record AuditTrailCommanModel<TPermission>
 {
+    public required Guid UniqueId { get; set; }
     public required object Entity { get; set; } = null!;
     public TPermission? RequiredReadPermission { get; set; }
     public required DateTime Timestamp { get; set; }
