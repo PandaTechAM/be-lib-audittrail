@@ -1,5 +1,5 @@
 ﻿namespace AuditTrail.Models;
-public record AuditTrailCommanModel<TPermission>
+public record AuditTrailDataAfterSave<TPermission>
 {
     public required Guid UniqueId { get; set; }
     public required object Entity { get; set; } = null!;

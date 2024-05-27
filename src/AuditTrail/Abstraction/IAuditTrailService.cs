@@ -7,8 +7,8 @@ namespace AuditTrail.Abstraction;
 public interface IAuditTrailService<TPermission>
 {
     Task SendToConsumerAsync(CancellationToken cancellationToken = default);
-    Task<IEnumerable<AuditTrailEntityData<TPermission>>> GetEntityTrackedPropertiesBeforeSave(ChangeTracker changeTracker, CancellationToken cancellationToken = default);
-    IEnumerable<AuditTrailCommanModel<TPermission>> UpdateEntityPropertiesAfterSave(IEnumerable<AuditTrailEntityData<TPermission>> auditEntitiesData,
+    Task<IEnumerable<AuditTrailDataBeforeSave<TPermission>>> GetEntityTrackedPropertiesBeforeSave(ChangeTracker changeTracker, CancellationToken cancellationToken = default);
+    IEnumerable<AuditTrailDataAfterSave<TPermission>> UpdateEntityPropertiesAfterSave(IEnumerable<AuditTrailDataBeforeSave<TPermission>> auditEntitiesData,
         DbContext context);
     Task FinishSaveChanges(DbContextEventData eventData);
     void ClearTransactionData();

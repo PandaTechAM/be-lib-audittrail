@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Security;
 
 namespace AuditTrail.Abstraction;
+
 public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TPermission>
 {
     private readonly IAuditTrailConsumer<TPermission> _auditTrailConsumer;
@@ -17,14 +18,17 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
     private readonly IAuditTrailAssemblyProvider _auditAssemblyProvider;
     private readonly ILogger<AuditTrailServiceBase<TPermission>> _logger;
 
-    private readonly List<AuditTrailCommanModel<TPermission>> _auditTransactionData = [];
-    private readonly List<AuditTrailEntityData<TPermission>> _auditTrailSaveData = [];
+    private readonly List<AuditTrailDataAfterSave<TPermission>> _auditTransactionData = [];
+    private readonly List<AuditTrailDataBeforeSave<TPermission>> _auditTrailSaveData = [];
 
-    protected AuditTrailServiceBase(IAuditTrailConsumer<TPermission> audtTrailConsumer, IServiceProvider serviceProvider, IAuditTrailAssemblyProvider auditAssemblyProvider, ILogger<AuditTrailService<TPermission>> logger)
+    protected AuditTrailServiceBase(IAuditTrailConsumer<TPermission> audtTrailConsumer,
+        IServiceProvider serviceProvider, IAuditTrailAssemblyProvider auditAssemblyProvider,
+        ILogger<AuditTrailService<TPermission>> logger)
     {
         _auditTrailConsumer = audtTrailConsumer ?? throw new ArgumentNullException(nameof(audtTrailConsumer));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _auditAssemblyProvider = auditAssemblyProvider ?? throw new ArgumentNullException(nameof(auditAssemblyProvider));
+        _auditAssemblyProvider =
+            auditAssemblyProvider ?? throw new ArgumentNullException(nameof(auditAssemblyProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -32,16 +36,17 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
     {
         var changes = changeTracker.Entries()
             .Where(e => e.State is EntityState.Modified or EntityState.Added or EntityState.Deleted
-            && _auditAssemblyProvider.AssemblyScanResult
-            .Select(s => s.InterfaceType.GetGenericArguments()[0])
-            .Contains(e.Entity.GetType()));
+                        && _auditAssemblyProvider.AssemblyScanResult
+                            .Select(s => s.InterfaceType.GetGenericArguments()[0])
+                            .Contains(e.Entity.GetType()));
 
         return changes;
     }
 
-    public async Task<IEnumerable<AuditTrailEntityData<TPermission>>> GetEntityTrackedPropertiesBeforeSave(ChangeTracker changeTracker, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<AuditTrailDataBeforeSave<TPermission>>> GetEntityTrackedPropertiesBeforeSave(
+        ChangeTracker changeTracker, CancellationToken cancellationToken = default)
     {
-        List<AuditTrailEntityData<TPermission>> auditEntities = [];
+        List<AuditTrailDataBeforeSave<TPermission>> auditEntities = [];
 
         if (_auditAssemblyProvider.AssemblyScanResult is null)
         {
@@ -61,18 +66,20 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
             }
             else
             {
-                entityProperies = GetTrackedPropertiesWithValues(entityEntry.Properties.Where(prop => prop.IsModified), auditEntity);
+                entityProperies = GetTrackedPropertiesWithValues(entityEntry.Properties.Where(prop => prop.IsModified),
+                    auditEntity);
             }
 
             // For deleted entities, we can't dinamically get id/id's, so we need to get it before SaveChanges
             var id = GetEntityId(auditEntity, changeTracker);
 
-            var auditData = new AuditTrailEntityData<TPermission>
+            var auditData = new AuditTrailDataBeforeSave<TPermission>
             {
                 Entity = entityEntry.Entity,
                 RequiredReadPermission = entityProperies.Permission,
                 EntityId = id,
-                EntityName = entityEntry.GetType().GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? entityEntry.Entity.GetType().Name,
+                EntityName = entityEntry.GetType().GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ??
+                             entityEntry.Entity.GetType().Name,
                 Action = GetActionFromEntityState(entityEntry.State),
                 DataJson = System.Text.Json.JsonSerializer.Serialize(entityProperies.TrackedProperties),
                 Timestamp = DateTime.UtcNow,
@@ -87,10 +94,11 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         return auditEntities;
     }
 
-    public IEnumerable<AuditTrailCommanModel<TPermission>> UpdateEntityPropertiesAfterSave(IEnumerable<AuditTrailEntityData<TPermission>> auditEntitiesData,
+    public IEnumerable<AuditTrailDataAfterSave<TPermission>> UpdateEntityPropertiesAfterSave(
+        IEnumerable<AuditTrailDataBeforeSave<TPermission>> auditEntitiesData,
         DbContext context)
     {
-        var auditEntitiesUpdatedData = new List<AuditTrailCommanModel<TPermission>>();
+        var auditEntitiesUpdatedData = new List<AuditTrailDataAfterSave<TPermission>>();
         foreach (var entityData in auditEntitiesData)
         {
             var entityId = entityData.EntityId;
@@ -101,7 +109,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
                 entityId = GetEntityId(entity, context.ChangeTracker);
             }
 
-            var auditModel = new AuditTrailCommanModel<TPermission>
+            var auditModel = new AuditTrailDataAfterSave<TPermission>
             {
                 UniqueId = entityData.UniqueId,
                 Entity = entity,
@@ -143,11 +151,13 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         }
     }
 
-    public async Task StartCollectingSaveData(DbContextEventData eventData, CancellationToken cancellationToken = default)
+    public async Task StartCollectingSaveData(DbContextEventData eventData,
+        CancellationToken cancellationToken = default)
     {
         if (eventData?.Context != null)
         {
-            var auditData = await GetEntityTrackedPropertiesBeforeSave(eventData.Context.ChangeTracker, cancellationToken);
+            var auditData =
+                await GetEntityTrackedPropertiesBeforeSave(eventData.Context.ChangeTracker, cancellationToken);
             _auditTrailSaveData.AddRange(auditData);
         }
     }
@@ -164,31 +174,32 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     protected string? GetEntityId(object entity, ChangeTracker changeTracker)
     {
-        return changeTracker.Entries()?
-        .FirstOrDefault(e => e.Entity == entity)?
-        .Properties?
-        .First(p => p?.Metadata?.IsPrimaryKey() ?? false)?
-        .CurrentValue?
-        .ToString();
+        return changeTracker.Entries()
+            .FirstOrDefault(e => e.Entity == entity)?
+            .Properties
+            .FirstOrDefault(p => p.Metadata.IsPrimaryKey())?
+            .CurrentValue?
+            .ToString();
     }
 
-    protected TrackedPropertiesWithPermission<TPermission> GetTrackedPropertiesWithValues(IEnumerable<PropertyEntry> properties, object entity)
+    protected TrackedPropertiesWithPermission<TPermission> GetTrackedPropertiesWithValues(
+        IEnumerable<PropertyEntry> properties, object entity)
     {
         var modifiedProperties = new Dictionary<string, object>();
 
         var ruleService = GetService(entity.GetType(), typeof(TPermission));
 
         var entityRule = ruleService as IEntityRule<TPermission>;
-        TPermission permission = entityRule!.Permission!;
+        var permission = entityRule!.Permission!;
 
-        foreach (PropertyEntry property in properties)
+        foreach (var property in properties)
         {
-            if (property.Metadata.IsPrimaryKey())
+            if (property.Metadata.IsPrimaryKey() || property.Metadata.PropertyInfo is null)
             {
                 continue;
             }
 
-            entityRule.ExecuteRules(property.Metadata.PropertyInfo!.Name, property.CurrentValue!, modifiedProperties);
+            entityRule.ExecuteRules(property.Metadata.PropertyInfo.Name, property.CurrentValue!, modifiedProperties);
         }
 
         return new TrackedPropertiesWithPermission<TPermission>(permission, modifiedProperties.AsReadOnly());
@@ -216,10 +227,12 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         {
             throw new ArgumentNullException($"Missing service for rule {closedGenericType.FullName}");
         }
+
         return entityRule;
     }
 
-    private async Task SendToConsumerAsync(IEnumerable<AuditTrailCommanModel<TPermission>> auditTraildata, CancellationToken cancellationToken = default)
+    private async Task SendToConsumerAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTraildata,
+        CancellationToken cancellationToken = default)
     {
         try
         {
