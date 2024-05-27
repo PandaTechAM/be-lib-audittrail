@@ -25,12 +25,12 @@ public class AuditTrailServiceMock<TPermission> : IAuditTrailService<TPermission
         return Task.CompletedTask;
     }
 
-    public Task<IEnumerable<AuditTrailEntityData<TPermission>>> GetEntityTrackedPropertiesBeforeSave(ChangeTracker changeTracker, CancellationToken cancellationToken = default)
+    public Task<IEnumerable<AuditTrailDataBeforeSave<TPermission>>> GetEntityTrackedPropertiesBeforeSave(ChangeTracker changeTracker, CancellationToken cancellationToken = default)
     {
         return null!;
     }
 
-    public Task SendToConsumerAsync(IEnumerable<AuditTrailCommanModel<TPermission>> auditTrail, CancellationToken cancellationToken = default)
+    public Task SendToConsumerAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrail, CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
     }
@@ -45,7 +45,7 @@ public class AuditTrailServiceMock<TPermission> : IAuditTrailService<TPermission
         return Task.CompletedTask;
     }
 
-    public IEnumerable<AuditTrailCommanModel<TPermission>> UpdateEntityPropertiesAfterSave(IEnumerable<AuditTrailEntityData<TPermission>> auditEntitiesData, DbContext context)
+    public IEnumerable<AuditTrailDataAfterSave<TPermission>> UpdateEntityPropertiesAfterSave(IEnumerable<AuditTrailDataBeforeSave<TPermission>> auditEntitiesData, DbContext context)
     {
         return null!;
     }

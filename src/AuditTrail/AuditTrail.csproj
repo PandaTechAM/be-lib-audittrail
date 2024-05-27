@@ -8,13 +8,13 @@
         <Copyright>MIT</Copyright>
         <PackageIcon>pandatech.png</PackageIcon>
         <PackageReadmeFile>Readme.md</PackageReadmeFile>
-        <Version>1.1.2</Version>
+        <Version>1.1.3</Version>
         <PackageId>Pandatech.AuditTrail</PackageId>
         <PackageTags>Pandatech, library, Track Entities, Track Entity Properties, Audit Entities, Audit Entity Properties</PackageTags>
         <Title>AuditTrail</Title>
         <Description>Collect essential audit data from Entity Framework Core's ChangeTracker.</Description>
         <RepositoryUrl>https://github.com/PandaTechAM/be-lib-audittrail</RepositoryUrl>
-        <PackageReleaseNotes>Added package</PackageReleaseNotes>
+        <PackageReleaseNotes>Breaking changes -> Rename "AuditTrailCommanModel" into "AuditTrailDataAfterSave" and "AuditTrailEntityData" into "AuditTrailDataBeforeSave"</PackageReleaseNotes>
         <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     </PropertyGroup>
 
