@@ -1,4 +1,4 @@
-﻿using AuditTrail.Abstraction;
+﻿using AuditTrail.Abstractions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;

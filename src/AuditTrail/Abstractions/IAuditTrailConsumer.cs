@@ -1,13 +1,14 @@
 ﻿using AuditTrail.Models;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Threading;
 
-namespace AuditTrail.Abstraction;
+namespace AuditTrail.Abstractions;
 
 public interface IAuditTrailConsumer<TPermission>
 {
     Task ConsumeAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> entities, CancellationToken cancellationToken = default);
 
-    Task BeforeSaveAsync(IEnumerable<AuditTrailDataBeforeSave<TPermission>> entitiesCancellationToken, CancellationToken cancellationToken = default)
+    Task BeforeSaveAsync(IEnumerable<AuditTrailDataBeforeSave<TPermission>> entitiesCancellationToken, DbContextEventData eventData, CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 }
 

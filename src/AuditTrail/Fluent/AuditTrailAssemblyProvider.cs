@@ -1,4 +1,4 @@
-﻿using AuditTrail.Fluent.Abstraction;
+﻿using AuditTrail.Fluent.Abstractions;
 using System.Security;
 using static AuditTrail.Fluent.AssemblyScanner;
 

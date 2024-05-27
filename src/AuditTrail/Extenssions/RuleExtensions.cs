@@ -1,5 +1,5 @@
-﻿using AuditTrail.Abstraction;
-using AuditTrail.Fluent.Abstraction;
+﻿using AuditTrail.Abstractions;
+using AuditTrail.Fluent.Abstractions;
 using AuditTrail.Fluent.Rules;
 
 namespace AuditTrail.Extenssions;

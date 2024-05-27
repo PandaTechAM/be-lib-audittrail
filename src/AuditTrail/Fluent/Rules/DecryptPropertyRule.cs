@@ -1,4 +1,4 @@
-﻿using AuditTrail.Abstraction;
+﻿using AuditTrail.Abstractions;
 
 namespace AuditTrail.Fluent.Rules;
 public class DecryptPropertyRule<TEntity, TProperty> : PropertyRule<TEntity, TProperty>

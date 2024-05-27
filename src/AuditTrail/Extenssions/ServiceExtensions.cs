@@ -1,8 +1,8 @@
 ﻿namespace AuditTrail.Extenssions;
 
-using AuditTrail.Abstraction;
+using AuditTrail.Abstractions;
 using AuditTrail.Fluent;
-using AuditTrail.Fluent.Abstraction;
+using AuditTrail.Fluent.Abstractions;
 using AuditTrail.Interceptors;
 using AuditTrail.Services;
 using Microsoft.EntityFrameworkCore;

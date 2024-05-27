@@ -1,6 +1,6 @@
 ﻿using static AuditTrail.Fluent.AssemblyScanner;
 
-namespace AuditTrail.Fluent.Abstraction;
+namespace AuditTrail.Fluent.Abstractions;
 
 public interface IAuditTrailAssemblyProvider
 {

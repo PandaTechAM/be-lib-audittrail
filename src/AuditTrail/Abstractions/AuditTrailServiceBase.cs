@@ -1,4 +1,4 @@
-﻿using AuditTrail.Fluent.Abstraction;
+﻿using AuditTrail.Fluent.Abstractions;
 using AuditTrail.Models;
 using AuditTrail.Services;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +9,7 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Security;
 
-namespace AuditTrail.Abstraction;
+namespace AuditTrail.Abstractions;
 
 public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TPermission>
 {
@@ -18,78 +18,77 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
     private readonly IAuditTrailAssemblyProvider _auditAssemblyProvider;
     private readonly ILogger<AuditTrailServiceBase<TPermission>> _logger;
 
-    private readonly List<AuditTrailDataAfterSave<TPermission>> _auditTransactionData = [];
-    private readonly List<AuditTrailDataBeforeSave<TPermission>> _auditTrailSaveData = [];
+    private readonly List<AuditTrailDataAfterSave<TPermission>> _auditTransactionData = new();
+    private readonly List<AuditTrailDataBeforeSave<TPermission>> _auditTrailSaveData = new();
 
-    protected AuditTrailServiceBase(IAuditTrailConsumer<TPermission> audtTrailConsumer,
-        IServiceProvider serviceProvider, IAuditTrailAssemblyProvider auditAssemblyProvider,
-        ILogger<AuditTrailService<TPermission>> logger)
+    protected AuditTrailServiceBase(
+        IAuditTrailConsumer<TPermission> auditTrailConsumer,
+        IServiceProvider serviceProvider,
+        IAuditTrailAssemblyProvider auditAssemblyProvider,
+        ILogger<AuditTrailServiceBase<TPermission>> logger)
     {
-        _auditTrailConsumer = audtTrailConsumer ?? throw new ArgumentNullException(nameof(audtTrailConsumer));
+        _auditTrailConsumer = auditTrailConsumer ?? throw new ArgumentNullException(nameof(auditTrailConsumer));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-        _auditAssemblyProvider =
-            auditAssemblyProvider ?? throw new ArgumentNullException(nameof(auditAssemblyProvider));
+        _auditAssemblyProvider = auditAssemblyProvider ?? throw new ArgumentNullException(nameof(auditAssemblyProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     protected virtual IEnumerable<EntityEntry?> GetChanges(ChangeTracker changeTracker)
     {
-        var changes = changeTracker.Entries()
-            .Where(e => e.State is EntityState.Modified or EntityState.Added or EntityState.Deleted
-                        && _auditAssemblyProvider.AssemblyScanResult
-                            .Select(s => s.InterfaceType.GetGenericArguments()[0])
-                            .Contains(e.Entity.GetType()));
+        var trackedEntityTypes = _auditAssemblyProvider.AssemblyScanResult
+            .Select(s => s.InterfaceType.GetGenericArguments()[0])
+            .ToHashSet();
 
-        return changes;
+        return changeTracker.Entries()
+            .Where(e => (e.State == EntityState.Modified || e.State == EntityState.Added || e.State == EntityState.Deleted)
+                        && trackedEntityTypes.Contains(e.Entity.GetType()));
     }
 
     public async Task<IEnumerable<AuditTrailDataBeforeSave<TPermission>>> GetEntityTrackedPropertiesBeforeSave(
-        ChangeTracker changeTracker, CancellationToken cancellationToken = default)
+        DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
-        List<AuditTrailDataBeforeSave<TPermission>> auditEntities = [];
+        var auditEntities = new List<AuditTrailDataBeforeSave<TPermission>>();
 
-        if (_auditAssemblyProvider.AssemblyScanResult is null)
+        if (_auditAssemblyProvider.AssemblyScanResult is null || eventData.Context is null)
         {
             return auditEntities;
         }
 
-        var changes = GetChanges(changeTracker);
+        var changes = GetChanges(eventData.Context.ChangeTracker);
 
         foreach (var entityEntry in changes)
         {
             var auditEntity = entityEntry!.Entity;
 
-            TrackedPropertiesWithPermission<TPermission> entityProperies;
+            TrackedPropertiesWithPermission<TPermission> entityProperties;
             if (entityEntry.State == EntityState.Added)
             {
-                entityProperies = GetTrackedPropertiesWithValues(entityEntry.Properties, auditEntity);
+                entityProperties = GetTrackedPropertiesWithValues(entityEntry.Properties, auditEntity);
             }
             else
             {
-                entityProperies = GetTrackedPropertiesWithValues(entityEntry.Properties.Where(prop => prop.IsModified),
-                    auditEntity);
+                entityProperties = GetTrackedPropertiesWithValues(entityEntry.Properties.Where(prop => prop.IsModified), auditEntity);
             }
 
-            // For deleted entities, we can't dinamically get id/id's, so we need to get it before SaveChanges
-            var id = GetEntityId(auditEntity, changeTracker);
+            // For deleted entities, we can't dynamically get id/id's, so we need to get it before SaveChanges
+            var id = GetEntityId(auditEntity, eventData.Context.ChangeTracker);
 
             var auditData = new AuditTrailDataBeforeSave<TPermission>
             {
                 Entity = entityEntry.Entity,
-                RequiredReadPermission = entityProperies.Permission,
+                RequiredReadPermission = entityProperties.Permission,
                 EntityId = id,
-                EntityName = entityEntry.GetType().GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ??
-                             entityEntry.Entity.GetType().Name,
+                EntityName = entityEntry.GetType().GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? entityEntry.Entity.GetType().Name,
                 Action = GetActionFromEntityState(entityEntry.State),
-                DataJson = System.Text.Json.JsonSerializer.Serialize(entityProperies.TrackedProperties),
+                DataJson = System.Text.Json.JsonSerializer.Serialize(entityProperties.TrackedProperties),
                 Timestamp = DateTime.UtcNow,
-                ModifiedProperties = entityProperies.TrackedProperties,
+                ModifiedProperties = entityProperties.TrackedProperties,
             };
 
             auditEntities.Add(auditData);
         }
 
-        await _auditTrailConsumer.BeforeSaveAsync(auditEntities, cancellationToken);
+        await _auditTrailConsumer.BeforeSaveAsync(auditEntities, eventData, cancellationToken);
 
         return auditEntities;
     }
@@ -151,13 +150,11 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         }
     }
 
-    public async Task StartCollectingSaveData(DbContextEventData eventData,
-        CancellationToken cancellationToken = default)
+    public async Task StartCollectingSaveData(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
         if (eventData?.Context != null)
         {
-            var auditData =
-                await GetEntityTrackedPropertiesBeforeSave(eventData.Context.ChangeTracker, cancellationToken);
+            var auditData = await GetEntityTrackedPropertiesBeforeSave(eventData, cancellationToken);
             _auditTrailSaveData.AddRange(auditData);
         }
     }
@@ -231,20 +228,20 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         return entityRule;
     }
 
-    private async Task SendToConsumerAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTraildata,
+    private async Task SendToConsumerAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrailData,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            if (auditTraildata.Any())
+            if (auditTrailData.Any())
             {
-                await _auditTrailConsumer.ConsumeAsync(auditTraildata, cancellationToken);
+                await _auditTrailConsumer.ConsumeAsync(auditTrailData, cancellationToken);
                 ClearTransactionData();
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Send to audittrailconsumer failed {ex}");
+            _logger.LogError($"Send to audit trail consumer failed: {ex}");
         }
     }
 }

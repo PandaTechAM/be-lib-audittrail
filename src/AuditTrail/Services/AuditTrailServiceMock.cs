@@ -1,4 +1,4 @@
-﻿using AuditTrail.Abstraction;
+﻿using AuditTrail.Abstractions;
 using AuditTrail.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -25,7 +25,7 @@ public class AuditTrailServiceMock<TPermission> : IAuditTrailService<TPermission
         return Task.CompletedTask;
     }
 
-    public Task<IEnumerable<AuditTrailDataBeforeSave<TPermission>>> GetEntityTrackedPropertiesBeforeSave(ChangeTracker changeTracker, CancellationToken cancellationToken = default)
+    public Task<IEnumerable<AuditTrailDataBeforeSave<TPermission>>> GetEntityTrackedPropertiesBeforeSave(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
         return null!;
     }

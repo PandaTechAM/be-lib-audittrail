@@ -5,7 +5,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using AuditTrail.Fluent.Abstraction;
+using AuditTrail.Fluent.Abstractions;
 
 /// <summary>
 /// Class that can be used to find all the types from a collection of types.

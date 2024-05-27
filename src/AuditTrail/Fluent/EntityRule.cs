@@ -1,4 +1,4 @@
-﻿using AuditTrail.Fluent.Abstraction;
+﻿using AuditTrail.Fluent.Abstractions;
 using System.Linq.Expressions;
 
 namespace AuditTrail.Fluent;

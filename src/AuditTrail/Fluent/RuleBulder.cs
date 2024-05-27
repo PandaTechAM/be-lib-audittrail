@@ -1,4 +1,4 @@
-﻿using AuditTrail.Fluent.Abstraction;
+﻿using AuditTrail.Fluent.Abstractions;
 
 namespace AuditTrail.Fluent;
 public class RuleBulder<TEntity, TPermission, TProperty> :
