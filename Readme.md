@@ -35,7 +35,7 @@ To be able to retrive modified entities data after save operation.
 ```csharp
 public class AuditTrailConsumer<TPermission>() : IAuditTrailConsumer<TPermission>
 {
-   public Task ConsumeAsync(IEnumerable<AuditTrailCommanModel<TPermission>> entitiesData, CancellationToken cancellationToken = default)
+   public Task ConsumeAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> entitiesData, CancellationToken cancellationToken = default)
    {
         // Handle tracked entites here.
    }
