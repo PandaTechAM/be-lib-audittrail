@@ -1,11 +1,11 @@
 namespace AuditTrail.Fluent;
 
+using AuditTrail.Fluent.Abstractions;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using AuditTrail.Fluent.Abstractions;
 
 /// <summary>
 /// Class that can be used to find all the types from a collection of types.

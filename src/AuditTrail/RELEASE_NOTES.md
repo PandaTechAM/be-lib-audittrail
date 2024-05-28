@@ -1,5 +1,11 @@
 # Release Notes
 
+## Version 1.1.6 - 2024-05-28
+- Added method `ConsumeTransactionAsync` added for transaction support in the audit trail consumer service.
+
+Action Required: 
+- Implementation: All classes dealing with audit trail data AuditTrailConsumer must implement the ConsumeTransactionAsync method.
+
 ## Version 1.1.4 - 2024-05-27
 
 ### Added

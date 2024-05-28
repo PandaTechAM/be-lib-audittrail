@@ -1,6 +1,5 @@
 ﻿using AuditTrail.Fluent.Abstractions;
 using AuditTrail.Models;
-using AuditTrail.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -88,7 +87,10 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
             auditEntities.Add(auditData);
         }
 
-        await _auditTrailConsumer.BeforeSaveAsync(auditEntities, eventData, cancellationToken);
+        if (eventData.Context != null && eventData.Context.Database.CurrentTransaction == null)
+        {
+            await _auditTrailConsumer.BeforeSaveAsync(auditEntities, eventData, cancellationToken);
+        }
 
         return auditEntities;
     }
@@ -126,9 +128,9 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         return auditEntitiesUpdatedData;
     }
 
-    public Task SendToConsumerAsync(CancellationToken cancellationToken = default)
+    public Task SendToTransactionConsumerAsync(TransactionEndEventData eventData, CancellationToken cancellationToken = default)
     {
-        return SendToConsumerAsync(_auditTransactionData, cancellationToken);
+        return SendToTransactionConsumerAsync(_auditTransactionData, eventData, cancellationToken);
     }
 
     public async Task FinishSaveChanges(DbContextEventData eventData)
@@ -228,8 +230,23 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         return entityRule;
     }
 
-    private async Task SendToConsumerAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrailData,
-        CancellationToken cancellationToken = default)
+    private async Task SendToTransactionConsumerAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrailData, TransactionEndEventData eventData, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (auditTrailData.Any())
+            {
+                await _auditTrailConsumer.ConsumeTransactionAsync(auditTrailData, eventData, cancellationToken);
+                ClearTransactionData();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Send to audit trail transaction consumer failed");
+        }
+    }
+
+    private async Task SendToConsumerAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrailData, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -241,7 +258,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Send to audit trail consumer failed: {ex}");
+            _logger.LogError(ex, "Send to audit trail consumer failed");
         }
     }
 }

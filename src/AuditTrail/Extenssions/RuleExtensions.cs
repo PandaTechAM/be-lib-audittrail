@@ -11,7 +11,7 @@ public static class RuleExtensions
         var rule = new IgnorePropertyRule<T, TProperty?>();
         return ruleBuilder.SetRule(rule!)!;
     }
-    
+
     /// <param name="includesHash"> Parameter important to pass exact same value that used to encrypt </param>
     public static IRuleBulder<T, TPermission, TProperty?> Decrypt<T, TPermission, TProperty>(this IRuleBulder<T, TPermission, TProperty> ruleBuilder, IAuditTrailDecryption auditTrailDecryption, bool includesHash)
         where T : class

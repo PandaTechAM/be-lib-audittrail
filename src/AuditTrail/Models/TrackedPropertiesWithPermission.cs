@@ -1,6 +1,4 @@
-﻿using System.Collections.ObjectModel;
-
-namespace AuditTrail.Models;
+﻿namespace AuditTrail.Models;
 
 public record TrackedPropertiesWithPermission<TPermission>(TPermission? permission, IReadOnlyDictionary<string, object> trackedProperties)
 {

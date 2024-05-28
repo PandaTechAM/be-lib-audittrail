@@ -1,6 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-
-namespace AuditTrail.Models;
+﻿namespace AuditTrail.Models;
 public record AuditTrailDataBeforeSave<TPermission>
 {
     public Guid UniqueId { get; init; } = Guid.NewGuid();

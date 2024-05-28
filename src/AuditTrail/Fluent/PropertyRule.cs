@@ -1,5 +1,5 @@
-﻿using System.Linq.Expressions;
-using AuditTrail.Fluent.Abstractions;
+﻿using AuditTrail.Fluent.Abstractions;
+using System.Linq.Expressions;
 
 namespace AuditTrail.Fluent;
 public class PropertyRule<TEntity, TProperty> : IPropertyRule<TEntity, TProperty>

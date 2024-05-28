@@ -2,7 +2,7 @@
 
 namespace AuditTrail.Fluent;
 public class RuleBulder<TEntity, TPermission, TProperty> :
-    IRuleBulder<TEntity, TPermission, TProperty> 
+    IRuleBulder<TEntity, TPermission, TProperty>
     where TEntity : class
 {
     public IPropertyRule<TEntity, TProperty> Rule { get; }

@@ -11,13 +11,13 @@ public class AuditTrailDbTransactionInterceptor<TPermission>(IHttpContextAccesso
 
     public override void TransactionCommitted(DbTransaction transaction, TransactionEndEventData eventData)
     {
-        SendToConsumer().GetAwaiter().GetResult();
+        SendToTransactionConsumer(eventData).GetAwaiter().GetResult();
         base.TransactionCommitted(transaction, eventData);
     }
 
     public override async Task TransactionCommittedAsync(DbTransaction transaction, TransactionEndEventData eventData, CancellationToken cancellationToken = default)
     {
-        await SendToConsumer();
+        await SendToTransactionConsumer(eventData);
         await base.TransactionCommittedAsync(transaction, eventData, cancellationToken);
     }
 
@@ -38,13 +38,13 @@ public class AuditTrailDbTransactionInterceptor<TPermission>(IHttpContextAccesso
         return httpContextAccessor.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission>>();
     }
 
-    private Task SendToConsumer()
+    private Task SendToTransactionConsumer(TransactionEndEventData eventData)
     {
         var auditTrailService = GetAuditTrailService(httpContextAccessor);
 
         if (auditTrailService != null)
         {
-            return auditTrailService.SendToConsumerAsync();
+            return auditTrailService.SendToTransactionConsumerAsync(eventData);
         }
 
         return Task.CompletedTask;

@@ -1,7 +1,6 @@
 ﻿using AuditTrail.Abstractions;
 using AuditTrail.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace AuditTrail.Services;
@@ -38,6 +37,11 @@ public class AuditTrailServiceMock<TPermission> : IAuditTrailService<TPermission
     public Task SendToConsumerAsync(CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
+    }
+
+    public Task SendToTransactionConsumerAsync(TransactionEndEventData eventData, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
     }
 
     public Task StartCollectingSaveData(DbContextEventData eventData, CancellationToken cancellationToken = default)
