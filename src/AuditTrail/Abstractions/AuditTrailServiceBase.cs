@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
+using System.Data.Common;
 using System.Reflection;
 using System.Security;
 
@@ -159,6 +160,16 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
             var auditData = await GetEntityTrackedPropertiesBeforeSave(eventData, cancellationToken);
             _auditTrailSaveData.AddRange(auditData);
         }
+    }
+
+    public Task BeforeTransactionCommitedAsync(DbTransaction transaction, TransactionEventData eventData, CancellationToken cancellationToken = default)
+    {
+        if (eventData?.Context != null && _auditTransactionData.Any())
+        {
+            return _auditTrailConsumer.BeforeTransactionCommitedAsync(_auditTransactionData, transaction, eventData, cancellationToken);
+        }
+
+        return Task.CompletedTask;
     }
 
     public void ClearTransactionData()

@@ -9,6 +9,18 @@ public class AuditTrailDbTransactionInterceptor<TPermission>(IHttpContextAccesso
 {
     private readonly IHttpContextAccessor httpContextAccessor = httpContextAccessor;
 
+    public override InterceptionResult TransactionCommitting(DbTransaction transaction, TransactionEventData eventData, InterceptionResult result)
+    {
+        BeforeTransactionCommitted(transaction, eventData).GetAwaiter().GetResult();
+        return base.TransactionCommitting(transaction, eventData, result);
+    }
+
+    public override async ValueTask<InterceptionResult> TransactionCommittingAsync(DbTransaction transaction, TransactionEventData eventData, InterceptionResult result, CancellationToken cancellationToken = default)
+    {
+        await BeforeTransactionCommitted(transaction, eventData, cancellationToken);
+        return await base.TransactionCommittingAsync(transaction, eventData, result, cancellationToken);
+    }
+
     public override void TransactionCommitted(DbTransaction transaction, TransactionEndEventData eventData)
     {
         SendToTransactionConsumer(eventData).GetAwaiter().GetResult();
@@ -36,6 +48,18 @@ public class AuditTrailDbTransactionInterceptor<TPermission>(IHttpContextAccesso
     protected virtual IAuditTrailService<TPermission>? GetAuditTrailService(IHttpContextAccessor httpContextAccessor)
     {
         return httpContextAccessor.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission>>();
+    }
+
+    private Task BeforeTransactionCommitted(DbTransaction transaction, TransactionEventData eventData, CancellationToken cancellationToken = default)
+    {
+        var auditTrailService = GetAuditTrailService(httpContextAccessor);
+
+        if (auditTrailService != null)
+        {
+            return auditTrailService.BeforeTransactionCommitedAsync(transaction, eventData, cancellationToken);
+        }
+
+        return Task.CompletedTask;
     }
 
     private Task SendToTransactionConsumer(TransactionEndEventData eventData)

@@ -2,6 +2,7 @@
 using AuditTrail.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using System.Data.Common;
 
 namespace AuditTrail.Services;
 
@@ -13,6 +14,11 @@ public class AuditTrailServiceMock<TPermission> : IAuditTrailService<TPermission
     public Task<int> AuditTrilSaveChangesAsync(DbContext context, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(0);
+    }
+
+    public Task BeforeTransactionCommitedAsync(DbTransaction transaction, TransactionEventData eventData, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
     }
 
     public void ClearSaveData() { }
