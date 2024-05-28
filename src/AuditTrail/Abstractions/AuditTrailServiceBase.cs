@@ -88,11 +88,6 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
             auditEntities.Add(auditData);
         }
 
-        if (eventData.Context != null && eventData.Context.Database.CurrentTransaction == null)
-        {
-            await _auditTrailConsumer.BeforeSaveAsync(auditEntities, eventData, cancellationToken);
-        }
-
         return auditEntities;
     }
 
@@ -159,6 +154,11 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         {
             var auditData = await GetEntityTrackedPropertiesBeforeSave(eventData, cancellationToken);
             _auditTrailSaveData.AddRange(auditData);
+
+            if (eventData.Context.Database.CurrentTransaction == null)
+            {
+                await _auditTrailConsumer.BeforeSaveAsync(_auditTrailSaveData, eventData, cancellationToken);
+            }
         }
     }
 

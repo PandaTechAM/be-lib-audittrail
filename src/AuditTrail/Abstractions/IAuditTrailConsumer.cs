@@ -10,10 +10,10 @@ public interface IAuditTrailConsumer<TPermission>
 
     Task ConsumeTransactionAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> entities, TransactionEndEventData dbContextEventData, CancellationToken cancellationToken = default);
 
-    Task BeforeSaveAsync(IEnumerable<AuditTrailDataBeforeSave<TPermission>> entitiesCancellationToken, DbContextEventData eventData, CancellationToken cancellationToken = default)
+    virtual Task BeforeSaveAsync(IEnumerable<AuditTrailDataBeforeSave<TPermission>> entitiesCancellationToken, DbContextEventData eventData, CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 
-    Task BeforeTransactionCommitedAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrailData, DbTransaction transaction, TransactionEventData eventData, CancellationToken cancellationToken = default)
+    virtual Task BeforeTransactionCommitedAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrailData, DbTransaction transaction, TransactionEventData eventData, CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 }
 
