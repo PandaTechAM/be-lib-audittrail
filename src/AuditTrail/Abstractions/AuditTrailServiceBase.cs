@@ -56,7 +56,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
         var changes = GetChanges(eventData.Context.ChangeTracker);
 
-        foreach (var entityEntry in changes)
+        foreach (var entityEntry in changes.Where(s => s?.Entity != null))
         {
             var auditEntity = entityEntry!.Entity;
 
@@ -187,11 +187,11 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         var ruleService = GetService(entity.GetType(), typeof(TPermission));
 
         var entityRule = ruleService as IEntityRule<TPermission>;
-        var permission = entityRule!.Permission!;
+        var permission = entityRule!.Permission;
 
         foreach (var property in properties)
         {
-            if (property.Metadata.IsPrimaryKey() || property.Metadata.PropertyInfo is null)
+            if (property.Metadata?.PropertyInfo is null || property.Metadata.IsPrimaryKey())
             {
                 continue;
             }
