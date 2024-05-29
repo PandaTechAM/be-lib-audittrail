@@ -1,9 +1,12 @@
-﻿using AuditTrail.Fluent.Abstractions;
+﻿using AuditTrail.Enums;
+using AuditTrail.Fluent.Abstractions;
 using AuditTrail.Models;
+using AuditTrail.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.ComponentModel;
 using System.Data.Common;
 using System.Reflection;
@@ -17,6 +20,9 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
     private readonly IServiceProvider _serviceProvider;
     private readonly IAuditTrailAssemblyProvider _auditAssemblyProvider;
     private readonly ILogger<AuditTrailServiceBase<TPermission>> _logger;
+    private readonly AuditTrailOptions _options;
+    private bool transactionStarted = false;
+    private bool commitStarted = false;
 
     private readonly List<AuditTrailDataAfterSave<TPermission>> _auditTransactionData = new();
     private readonly List<AuditTrailDataBeforeSave<TPermission>> _auditTrailSaveData = new();
@@ -25,12 +31,14 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         IAuditTrailConsumer<TPermission> auditTrailConsumer,
         IServiceProvider serviceProvider,
         IAuditTrailAssemblyProvider auditAssemblyProvider,
-        ILogger<AuditTrailServiceBase<TPermission>> logger)
+        ILogger<AuditTrailServiceBase<TPermission>> logger,
+        IOptions<AuditTrailOptions> options)
     {
         _auditTrailConsumer = auditTrailConsumer ?? throw new ArgumentNullException(nameof(auditTrailConsumer));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _auditAssemblyProvider = auditAssemblyProvider ?? throw new ArgumentNullException(nameof(auditAssemblyProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _options = options.Value ?? throw new ArgumentNullException(nameof(options));
     }
 
     protected virtual IEnumerable<EntityEntry?> GetChanges(ChangeTracker changeTracker)
@@ -124,14 +132,22 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         return auditEntitiesUpdatedData;
     }
 
-    public Task SendToTransactionConsumerAsync(TransactionEndEventData eventData, CancellationToken cancellationToken = default)
+    public async Task TransactionFinished(TransactionEventData eventData, TransactionStatus status, CancellationToken cancellationToken = default)
     {
-        return SendToTransactionConsumerAsync(_auditTransactionData, eventData, cancellationToken);
+        transactionStarted = false;
+        commitStarted = false;
+
+        if (_auditTransactionData.Any())
+        {
+            ClearTransactionData();
+        }
+
+        await _auditTrailConsumer.TransactionFinished(eventData, status, cancellationToken);
     }
 
-    public async Task FinishSaveChanges(DbContextEventData eventData)
+    public async Task FinishSaveChanges(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
-        if (eventData?.Context != null)
+        if (eventData?.Context != null && !commitStarted)
         {
             var updatedData = UpdateEntityPropertiesAfterSave(_auditTrailSaveData, eventData.Context);
 
@@ -142,29 +158,51 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
             else
             {
                 _auditTransactionData.AddRange(updatedData);
+
+                if (transactionStarted && eventData.Context != null && eventData.Context.Database.CurrentTransaction != null)
+                {
+                    try
+                    {
+                        commitStarted = true;
+                        await eventData.Context.Database.CommitTransactionAsync(cancellationToken);
+                    }
+                    finally
+                    {
+                        transactionStarted = false;
+                        commitStarted = false;
+                    }
+                }
             }
 
             ClearSaveData();
         }
     }
 
-    public async Task StartCollectingSaveData(DbContextEventData eventData, CancellationToken cancellationToken = default)
+    public async Task SavingChangesStartedAsync(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
-        if (eventData?.Context != null)
+        if (commitStarted)
         {
+            ClearSaveData();
+            ClearTransactionData();
+            return;
+        }
+
+        if (eventData.Context != null)
+        {
+            if (_options.AutoOpenTransaction && eventData.Context != null && eventData.Context.Database.CurrentTransaction == null)
+            {
+                await eventData.Context.Database.BeginTransactionAsync(cancellationToken);
+                transactionStarted = true;
+            }
+
             var auditData = await GetEntityTrackedPropertiesBeforeSave(eventData, cancellationToken);
             _auditTrailSaveData.AddRange(auditData);
-
-            if (eventData.Context.Database.CurrentTransaction == null)
-            {
-                await _auditTrailConsumer.BeforeSaveAsync(_auditTrailSaveData, eventData, cancellationToken);
-            }
         }
     }
 
     public Task BeforeTransactionCommitedAsync(DbTransaction transaction, TransactionEventData eventData, CancellationToken cancellationToken = default)
     {
-        if (eventData?.Context != null && _auditTransactionData.Any())
+        if (eventData.Context?.Database.CurrentTransaction != null && eventData.Context != null && _auditTransactionData.Any())
         {
             return _auditTrailConsumer.BeforeTransactionCommitedAsync(_auditTransactionData, transaction, eventData, cancellationToken);
         }
@@ -239,22 +277,6 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         }
 
         return entityRule;
-    }
-
-    private async Task SendToTransactionConsumerAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrailData, TransactionEndEventData eventData, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            if (auditTrailData.Any())
-            {
-                await _auditTrailConsumer.ConsumeTransactionAsync(auditTrailData, eventData, cancellationToken);
-                ClearTransactionData();
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Send to audit trail transaction consumer failed");
-        }
     }
 
     private async Task SendToConsumerAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrailData, CancellationToken cancellationToken = default)

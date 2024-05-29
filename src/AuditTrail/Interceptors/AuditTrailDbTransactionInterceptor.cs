@@ -1,4 +1,5 @@
 ﻿using AuditTrail.Abstractions;
+using AuditTrail.Enums;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,26 +24,38 @@ public class AuditTrailDbTransactionInterceptor<TPermission>(IHttpContextAccesso
 
     public override void TransactionCommitted(DbTransaction transaction, TransactionEndEventData eventData)
     {
-        SendToTransactionConsumer(eventData).GetAwaiter().GetResult();
+        TransactionFinishedAsync(eventData, TransactionStatus.Commited).GetAwaiter().GetResult();
         base.TransactionCommitted(transaction, eventData);
     }
 
     public override async Task TransactionCommittedAsync(DbTransaction transaction, TransactionEndEventData eventData, CancellationToken cancellationToken = default)
     {
-        await SendToTransactionConsumer(eventData);
+        await TransactionFinishedAsync(eventData, TransactionStatus.Commited, cancellationToken);
         await base.TransactionCommittedAsync(transaction, eventData, cancellationToken);
+    }
+
+    public override void TransactionFailed(DbTransaction transaction, TransactionErrorEventData eventData)
+    {
+        TransactionFinishedAsync(eventData, TransactionStatus.Failed).GetAwaiter().GetResult();
+        base.TransactionFailed(transaction, eventData);
+    }
+
+    public override async Task TransactionFailedAsync(DbTransaction transaction, TransactionErrorEventData eventData, CancellationToken cancellationToken = default)
+    {
+        await TransactionFinishedAsync(eventData, TransactionStatus.Failed, cancellationToken);
+        await base.TransactionFailedAsync(transaction, eventData, cancellationToken);
     }
 
     public override void TransactionRolledBack(DbTransaction transaction, TransactionEndEventData eventData)
     {
-        ClearTransactionData();
+        TransactionFinishedAsync(eventData, TransactionStatus.RolledBack).GetAwaiter().GetResult();
         base.TransactionRolledBack(transaction, eventData);
     }
 
-    public override Task TransactionRolledBackAsync(DbTransaction transaction, TransactionEndEventData eventData, CancellationToken cancellationToken = default)
+    public override async Task TransactionRolledBackAsync(DbTransaction transaction, TransactionEndEventData eventData, CancellationToken cancellationToken = default)
     {
-        ClearTransactionData();
-        return base.TransactionRolledBackAsync(transaction, eventData, cancellationToken);
+        await TransactionFinishedAsync(eventData, TransactionStatus.RolledBack, cancellationToken);
+        await base.TransactionRolledBackAsync(transaction, eventData, cancellationToken);
     }
 
     protected virtual IAuditTrailService<TPermission>? GetAuditTrailService(IHttpContextAccessor httpContextAccessor)
@@ -62,23 +75,16 @@ public class AuditTrailDbTransactionInterceptor<TPermission>(IHttpContextAccesso
         return Task.CompletedTask;
     }
 
-    private Task SendToTransactionConsumer(TransactionEndEventData eventData)
+    private Task TransactionFinishedAsync(TransactionEventData eventData, TransactionStatus status, CancellationToken cancellationToken = default)
     {
         var auditTrailService = GetAuditTrailService(httpContextAccessor);
 
         if (auditTrailService != null)
         {
-            return auditTrailService.SendToTransactionConsumerAsync(eventData);
+            return auditTrailService.TransactionFinished(eventData, status);
         }
 
         return Task.CompletedTask;
-    }
-
-    private void ClearTransactionData()
-    {
-        var auditTrailService = GetAuditTrailService(httpContextAccessor);
-
-        auditTrailService?.ClearTransactionData();
     }
 }
 

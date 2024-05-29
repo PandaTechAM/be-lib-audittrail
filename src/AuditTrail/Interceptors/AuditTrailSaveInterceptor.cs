@@ -9,13 +9,13 @@ public class AuditTrailSaveInterceptor<TPermission>(IHttpContextAccessor httpCon
     private readonly IHttpContextAccessor httpContextAccessor = httpContextAccessor;
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
-        StartCollectingSaveData(eventData);
+        SavingChangesStartedAsync(eventData);
         return base.SavingChanges(eventData, result);
     }
 
     public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {
-        await StartCollectingSaveData(eventData, cancellationToken);
+        await SavingChangesStartedAsync(eventData, cancellationToken);
         return await base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
@@ -60,14 +60,14 @@ public class AuditTrailSaveInterceptor<TPermission>(IHttpContextAccessor httpCon
         return httpContextAccessor.HttpContext?.RequestServices?.GetService<IAuditTrailService<TPermission>>();
     }
 
-    private Task StartCollectingSaveData(DbContextEventData eventData, CancellationToken cancellationToken = default)
+    private Task SavingChangesStartedAsync(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
         var auditTrailService = GetAuditTrailService(httpContextAccessor);
 
-        return auditTrailService?.StartCollectingSaveData(eventData, cancellationToken);
+        return auditTrailService?.SavingChangesStartedAsync(eventData, cancellationToken);
     }
 
-    private Task FinishSaveChanges(DbContextEventData eventData)
+    private Task FinishSaveChanges(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
         var auditTrailService = GetAuditTrailService(httpContextAccessor);
 
