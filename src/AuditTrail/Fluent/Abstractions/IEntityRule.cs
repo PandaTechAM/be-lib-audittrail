@@ -3,7 +3,7 @@
 public interface IEntityRule<TPermission>
 {
     public TPermission? Permission { get; }
-    void ExecuteRules(string propertyName, object value, Dictionary<string, object> modifiedProperties);
+    void ExecuteRules(string propertyName, object? value, Dictionary<string, object> modifiedProperties);
 }
 
 public interface IEntityRule<TEntity, TPermission>

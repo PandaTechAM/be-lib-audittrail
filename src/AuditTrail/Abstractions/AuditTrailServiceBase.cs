@@ -34,6 +34,8 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         ILogger<AuditTrailServiceBase<TPermission>> logger,
         IOptions<AuditTrailOptions> options)
     {
+        _logger.LogDebug("AuditTrailServiceBase constructor");
+
         _auditTrailConsumer = auditTrailConsumer ?? throw new ArgumentNullException(nameof(auditTrailConsumer));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _auditAssemblyProvider = auditAssemblyProvider ?? throw new ArgumentNullException(nameof(auditAssemblyProvider));
@@ -43,9 +45,11 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     protected virtual IEnumerable<EntityEntry?> GetChanges(ChangeTracker changeTracker)
     {
+        _logger.LogDebug("GetChanges");
+
         var trackedEntityTypes = _auditAssemblyProvider.AssemblyScanResult
             .Select(s => s.InterfaceType.GetGenericArguments()[0])
-            .ToHashSet();
+            .ToList();
 
         return changeTracker.Entries()
             .Where(e => (e.State == EntityState.Modified || e.State == EntityState.Added || e.State == EntityState.Deleted)
@@ -134,6 +138,8 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     public async Task TransactionFinished(TransactionEventData eventData, TransactionStatus status, CancellationToken cancellationToken = default)
     {
+        _logger.LogDebug("TransactionFinished");
+
         transactionStarted = false;
         commitStarted = false;
 
@@ -147,6 +153,8 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     public async Task FinishSaveChanges(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
+        _logger.LogDebug("FinishSaveChanges");
+
         if (eventData?.Context != null && !commitStarted)
         {
             var updatedData = UpdateEntityPropertiesAfterSave(_auditTrailSaveData, eventData.Context);
@@ -180,6 +188,8 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     public async Task SavingChangesStartedAsync(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
+        _logger.LogDebug("SavingChangesStartedAsync");
+
         if (commitStarted)
         {
             ClearSaveData();
@@ -202,6 +212,8 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     public Task BeforeTransactionCommitedAsync(DbTransaction transaction, TransactionEventData eventData, CancellationToken cancellationToken = default)
     {
+        _logger.LogDebug("BeforeTransactionCommitedAsync");
+
         if (eventData.Context?.Database.CurrentTransaction != null && eventData.Context != null && _auditTransactionData.Any())
         {
             return _auditTrailConsumer.BeforeTransactionCommitedAsync(_auditTransactionData, transaction, eventData, cancellationToken);
@@ -222,6 +234,8 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     protected string? GetEntityId(object entity, ChangeTracker changeTracker)
     {
+        _logger.LogDebug("GetEntityId");
+
         return changeTracker.Entries()
             .FirstOrDefault(e => e.Entity == entity)?
             .Properties
@@ -247,7 +261,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
                 continue;
             }
 
-            entityRule.ExecuteRules(property.Metadata.PropertyInfo.Name, property.CurrentValue!, modifiedProperties);
+            entityRule.ExecuteRules(property.Metadata.PropertyInfo.Name, property.CurrentValue, modifiedProperties);
         }
 
         return new TrackedPropertiesWithPermission<TPermission>(permission, modifiedProperties.AsReadOnly());
@@ -268,6 +282,8 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
     {
         var openGenericType = typeof(IEntityRule<,>);
         var closedGenericType = openGenericType.MakeGenericType(types);
+
+        _logger.LogDebug($"GetService {closedGenericType.FullName}");
 
         var entityRule = _serviceProvider.GetService(closedGenericType);
 

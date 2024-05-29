@@ -22,7 +22,7 @@ public abstract class EntityRule<TEntity, TPermission> : IEntityRule<TEntity, TP
         return new RuleBulder<TEntity, TPermission, TProperty>(rule, this);
     }
 
-    public virtual void ExecuteRules(string propertyName, object value, Dictionary<string, object> modifiedProperties)
+    public virtual void ExecuteRules(string propertyName, object? value, Dictionary<string, object?> modifiedProperties)
     {
         var rules = Rules.Where(s => s.PropertyName.Equals(propertyName));
 

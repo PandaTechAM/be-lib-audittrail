@@ -7,22 +7,22 @@ using Microsoft.Extensions.Options;
 namespace AuditTrail.Services;
 
 public sealed class AuditTrailService<TPermission>(
-    IAuditTrailConsumer<TPermission> AudtTrailConsumer,
-    IServiceProvider ServiceProvider,
-    IAuditTrailAssemblyProvider<TPermission> AuditAssemblyProvider,
-    ILogger<AuditTrailService<TPermission>> Logger,
+    IAuditTrailConsumer<TPermission> audtTrailConsumer,
+    IServiceProvider serviceProvider,
+    IAuditTrailAssemblyProvider<TPermission> auditAssemblyProvider,
+    ILogger<AuditTrailService<TPermission>> logger,
     IOptions<AuditTrailOptions> options) :
-    AuditTrailServiceBase<TPermission>(AudtTrailConsumer, ServiceProvider, AuditAssemblyProvider, Logger, options)
+    AuditTrailServiceBase<TPermission>(audtTrailConsumer, serviceProvider, auditAssemblyProvider, logger, options)
 {
 }
 
 public sealed class AuditTrailService<TPermission, TInstance>(
-    IAuditTrailConsumer<TPermission, TInstance> AudtTrailConsumer,
-    IServiceProvider ServiceProvider,
-    IAuditTrailAssemblyProvider<TInstance> AuditAssemblyProvider,
-    ILogger<AuditTrailService<TPermission>> Logger,
+    IAuditTrailConsumer<TPermission, TInstance> audtTrailConsumer,
+    IServiceProvider serviceProvider,
+    IAuditTrailAssemblyProvider<TInstance> auditAssemblyProvider,
+    ILogger<AuditTrailService<TPermission>> logger,
     IOptions<AuditTrailOptions> options) :
-    AuditTrailServiceBase<TPermission>(AudtTrailConsumer, ServiceProvider, AuditAssemblyProvider, Logger, options),
+    AuditTrailServiceBase<TPermission>(audtTrailConsumer, serviceProvider, auditAssemblyProvider, logger, options),
     IAuditTrailService<TPermission, TInstance>
 {
     protected override object GetService(params Type[] types)
@@ -32,7 +32,9 @@ public sealed class AuditTrailService<TPermission, TInstance>(
         requiredTypes.Add(typeof(TInstance));
         var closedGenericType = openGenericType.MakeGenericType(requiredTypes.ToArray());
 
-        var entityRule = ServiceProvider.GetService(closedGenericType);
+        logger.LogDebug($"GetService {closedGenericType.FullName}");
+
+        var entityRule = serviceProvider.GetService(closedGenericType);
 
         if (entityRule is null)
         {
