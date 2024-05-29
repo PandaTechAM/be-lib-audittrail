@@ -31,8 +31,8 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         IAuditTrailConsumer<TPermission> auditTrailConsumer,
         IServiceProvider serviceProvider,
         IAuditTrailAssemblyProvider auditAssemblyProvider,
-        ILogger<AuditTrailServiceBase<TPermission>> logger,
-        IOptions<AuditTrailOptions> options)
+        IOptions<AuditTrailOptions> options,
+        ILogger<AuditTrailServiceBase<TPermission>> logger = null)
     {
         LogDebug("AuditTrailServiceBase constructor");
 
