@@ -32,7 +32,7 @@ public sealed class AuditTrailService<TPermission, TInstance>(
         requiredTypes.Add(typeof(TInstance));
         var closedGenericType = openGenericType.MakeGenericType(requiredTypes.ToArray());
 
-        logger.LogDebug($"GetService {closedGenericType.FullName}");
+        LogDebug($"GetService {closedGenericType.FullName}");
 
         var entityRule = serviceProvider.GetService(closedGenericType);
 

@@ -34,18 +34,18 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         ILogger<AuditTrailServiceBase<TPermission>> logger,
         IOptions<AuditTrailOptions> options)
     {
-        _logger.LogDebug("AuditTrailServiceBase constructor");
+        LogDebug("AuditTrailServiceBase constructor");
 
         _auditTrailConsumer = auditTrailConsumer ?? throw new ArgumentNullException(nameof(auditTrailConsumer));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _auditAssemblyProvider = auditAssemblyProvider ?? throw new ArgumentNullException(nameof(auditAssemblyProvider));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _options = options.Value ?? throw new ArgumentNullException(nameof(options));
+        _logger = logger;
     }
 
     protected virtual IEnumerable<EntityEntry?> GetChanges(ChangeTracker changeTracker)
     {
-        _logger.LogDebug("GetChanges");
+        LogDebug("GetChanges");
 
         var trackedEntityTypes = _auditAssemblyProvider.AssemblyScanResult
             .Select(s => s.InterfaceType.GetGenericArguments()[0])
@@ -138,7 +138,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     public async Task TransactionFinished(TransactionEventData eventData, TransactionStatus status, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("TransactionFinished");
+        LogDebug("TransactionFinished");
 
         transactionStarted = false;
         commitStarted = false;
@@ -153,7 +153,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     public async Task FinishSaveChanges(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("FinishSaveChanges");
+        LogDebug("FinishSaveChanges");
 
         if (eventData?.Context != null && !commitStarted)
         {
@@ -188,7 +188,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     public async Task SavingChangesStartedAsync(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("SavingChangesStartedAsync");
+        LogDebug("SavingChangesStartedAsync");
 
         if (commitStarted)
         {
@@ -212,7 +212,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     public Task BeforeTransactionCommitedAsync(DbTransaction transaction, TransactionEventData eventData, CancellationToken cancellationToken = default)
     {
-        _logger.LogDebug("BeforeTransactionCommitedAsync");
+        LogDebug("BeforeTransactionCommitedAsync");
 
         if (eventData.Context?.Database.CurrentTransaction != null && eventData.Context != null && _auditTransactionData.Any())
         {
@@ -234,7 +234,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     protected string? GetEntityId(object entity, ChangeTracker changeTracker)
     {
-        _logger.LogDebug("GetEntityId");
+        LogDebug("GetEntityId");
 
         return changeTracker.Entries()
             .FirstOrDefault(e => e.Entity == entity)?
@@ -283,7 +283,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         var openGenericType = typeof(IEntityRule<,>);
         var closedGenericType = openGenericType.MakeGenericType(types);
 
-        _logger.LogDebug($"GetService {closedGenericType.FullName}");
+        LogDebug($"GetService {closedGenericType.FullName}");
 
         var entityRule = _serviceProvider.GetService(closedGenericType);
 
@@ -293,6 +293,14 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         }
 
         return entityRule;
+    }
+
+    protected void LogDebug(string logMessage)
+    {
+        if (_logger != null)
+        {
+            _logger.LogDebug(logMessage);
+        }
     }
 
     private async Task SendToConsumerAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrailData, CancellationToken cancellationToken = default)
@@ -307,7 +315,10 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Send to audit trail consumer failed");
+            if (_logger != null)
+            {
+                _logger.LogError(ex, "Send to audit trail consumer failed");
+            }
         }
     }
 }
