@@ -159,12 +159,12 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
                     _auditTransactionData.Add(data);
                 }
 
-                if (_transactionStarted && eventData.Context.Database.CurrentTransaction != null)
+                if (_transactionStarted && _transaction != null)
                 {
                     try
                     {
                         _commitStarted = true;
-                        await eventData.Context.Database.CommitTransactionAsync(cancellationToken);
+                        await _transaction.CommitAsync(cancellationToken);
                     }
                     catch (Exception ex)
                     {
@@ -174,8 +174,6 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
                     finally
                     {
                         await DisposeTransactionAsync();
-                        _transactionStarted = false;
-                        _commitStarted = false;
                     }
                 }
             }
@@ -343,6 +341,9 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
             await _transaction.DisposeAsync();
             _transaction = null;
         }
+
+        _commitStarted = false;
+        _transactionStarted = false;
     }
 
     private void DisposeTransaction()
