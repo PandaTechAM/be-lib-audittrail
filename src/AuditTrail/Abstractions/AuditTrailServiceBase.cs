@@ -11,21 +11,26 @@ using System.ComponentModel;
 using System.Data.Common;
 using System.Reflection;
 using System.Security;
+using System.Collections.Concurrent;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace AuditTrail.Abstractions;
 
-public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TPermission>
+public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TPermission>, IDisposable, IAsyncDisposable
 {
     private readonly IAuditTrailConsumer<TPermission> _auditTrailConsumer;
     private readonly IServiceProvider _serviceProvider;
     private readonly IAuditTrailAssemblyProvider _auditAssemblyProvider;
     private readonly ILogger<AuditTrailServiceBase<TPermission>> _logger;
     private readonly AuditTrailOptions _options;
-    private bool transactionStarted = false;
-    private bool commitStarted = false;
 
-    private readonly List<AuditTrailDataAfterSave<TPermission>> _auditTransactionData = new();
-    private readonly List<AuditTrailDataBeforeSave<TPermission>> _auditTrailSaveData = new();
+    private IDbContextTransaction? _transaction;
+    private bool _transactionStarted = false;
+    private bool _commitStarted = false;
+    private bool _disposed = false;
+
+    private readonly ConcurrentBag<AuditTrailDataAfterSave<TPermission>> _auditTransactionData = new();
+    private readonly ConcurrentBag<AuditTrailDataBeforeSave<TPermission>> _auditTrailSaveData = new();
 
     protected AuditTrailServiceBase(
         IAuditTrailConsumer<TPermission> auditTrailConsumer,
@@ -34,19 +39,17 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         IOptions<AuditTrailOptions> options,
         ILogger<AuditTrailServiceBase<TPermission>> logger = null)
     {
-        LogDebug("AuditTrailServiceBase constructor");
-
         _auditTrailConsumer = auditTrailConsumer ?? throw new ArgumentNullException(nameof(auditTrailConsumer));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _auditAssemblyProvider = auditAssemblyProvider ?? throw new ArgumentNullException(nameof(auditAssemblyProvider));
         _options = options.Value ?? throw new ArgumentNullException(nameof(options));
         _logger = logger;
+
+        LogDebug("AuditTrailServiceBase initialized");
     }
 
     protected virtual IEnumerable<EntityEntry?> GetChanges(ChangeTracker changeTracker)
     {
-        LogDebug("GetChanges");
-
         var trackedEntityTypes = _auditAssemblyProvider.AssemblyScanResult
             .Select(s => s.InterfaceType.GetGenericArguments()[0])
             .ToList();
@@ -71,18 +74,10 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         foreach (var entityEntry in changes.Where(s => s?.Entity != null))
         {
             var auditEntity = entityEntry!.Entity;
+            var entityProperties = entityEntry.State == EntityState.Added
+                ? GetTrackedPropertiesWithValues(entityEntry.Properties, auditEntity)
+                : GetTrackedPropertiesWithValues(entityEntry.Properties.Where(prop => prop.IsModified), auditEntity);
 
-            TrackedPropertiesWithPermission<TPermission> entityProperties;
-            if (entityEntry.State == EntityState.Added)
-            {
-                entityProperties = GetTrackedPropertiesWithValues(entityEntry.Properties, auditEntity);
-            }
-            else
-            {
-                entityProperties = GetTrackedPropertiesWithValues(entityEntry.Properties.Where(prop => prop.IsModified), auditEntity);
-            }
-
-            // For deleted entities, we can't dynamically get id/id's, so we need to get it before SaveChanges
             var id = GetEntityId(auditEntity, eventData.Context.ChangeTracker);
 
             var auditData = new AuditTrailDataBeforeSave<TPermission>
@@ -111,17 +106,15 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         foreach (var entityData in auditEntitiesData)
         {
             var entityId = entityData.EntityId;
-            var entity = entityData.Entity;
             if (entityData.Action == AuditActionType.Create)
             {
-                // For new added entities, we need to update the EntityId with the new Id/id's after SaveChanges
-                entityId = GetEntityId(entity, context.ChangeTracker);
+                entityId = GetEntityId(entityData.Entity, context.ChangeTracker);
             }
 
             var auditModel = new AuditTrailDataAfterSave<TPermission>
             {
                 UniqueId = entityData.UniqueId,
-                Entity = entity,
+                Entity = entityData.Entity,
                 RequiredReadPermission = entityData.RequiredReadPermission,
                 EntityId = entityId,
                 EntityName = entityData.EntityName,
@@ -138,10 +131,8 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     public async Task TransactionFinished(TransactionEventData eventData, TransactionStatus status, CancellationToken cancellationToken = default)
     {
-        LogDebug("TransactionFinished");
-
-        transactionStarted = false;
-        commitStarted = false;
+        _transactionStarted = false;
+        _commitStarted = false;
 
         if (_auditTransactionData.Any())
         {
@@ -153,9 +144,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     public async Task FinishSaveChanges(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
-        LogDebug("FinishSaveChanges");
-
-        if (eventData?.Context != null && !commitStarted)
+        if (eventData?.Context != null && !_commitStarted)
         {
             var updatedData = UpdateEntityPropertiesAfterSave(_auditTrailSaveData, eventData.Context);
 
@@ -165,19 +154,28 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
             }
             else
             {
-                _auditTransactionData.AddRange(updatedData);
+                foreach (var data in updatedData)
+                {
+                    _auditTransactionData.Add(data);
+                }
 
-                if (transactionStarted && eventData.Context != null && eventData.Context.Database.CurrentTransaction != null)
+                if (_transactionStarted && eventData.Context.Database.CurrentTransaction != null)
                 {
                     try
                     {
-                        commitStarted = true;
+                        _commitStarted = true;
                         await eventData.Context.Database.CommitTransactionAsync(cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogError("Commit transaction failed", ex);
+                        await RollbackTransactionAsync();
                     }
                     finally
                     {
-                        transactionStarted = false;
-                        commitStarted = false;
+                        await DisposeTransactionAsync();
+                        _transactionStarted = false;
+                        _commitStarted = false;
                     }
                 }
             }
@@ -188,9 +186,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     public async Task SavingChangesStartedAsync(DbContextEventData eventData, CancellationToken cancellationToken = default)
     {
-        LogDebug("SavingChangesStartedAsync");
-
-        if (commitStarted)
+        if (_commitStarted)
         {
             ClearSaveData();
             ClearTransactionData();
@@ -199,22 +195,31 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
         if (eventData.Context != null)
         {
-            if (_options.AutoOpenTransaction && eventData.Context != null && eventData.Context.Database.CurrentTransaction == null)
+            if (_options.AutoOpenTransaction && eventData.Context.Database.CurrentTransaction == null)
             {
-                await eventData.Context.Database.BeginTransactionAsync(cancellationToken);
-                transactionStarted = true;
+                _transaction = await eventData.Context.Database.BeginTransactionAsync(cancellationToken);
+                _transactionStarted = true;
             }
 
             var auditData = await GetEntityTrackedPropertiesBeforeSave(eventData, cancellationToken);
-            _auditTrailSaveData.AddRange(auditData);
+            foreach (var data in auditData)
+            {
+                _auditTrailSaveData.Add(data);
+            }
+        }
+    }
+
+    public async Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
+    {
+        if (_options.AutoOpenTransaction && _transaction != null)
+        {
+            await RollbackTransactionAsync();
         }
     }
 
     public Task BeforeTransactionCommitedAsync(DbTransaction transaction, TransactionEventData eventData, CancellationToken cancellationToken = default)
     {
-        LogDebug("BeforeTransactionCommitedAsync");
-
-        if (eventData.Context?.Database.CurrentTransaction != null && eventData.Context != null && _auditTransactionData.Any())
+        if (eventData.Context?.Database.CurrentTransaction != null && _auditTransactionData.Any())
         {
             return _auditTrailConsumer.BeforeTransactionCommitedAsync(_auditTransactionData, transaction, eventData, cancellationToken);
         }
@@ -234,8 +239,6 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     protected string? GetEntityId(object entity, ChangeTracker changeTracker)
     {
-        LogDebug("GetEntityId");
-
         return changeTracker.Entries()
             .FirstOrDefault(e => e.Entity == entity)?
             .Properties
@@ -248,11 +251,11 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         IEnumerable<PropertyEntry> properties, object entity)
     {
         var modifiedProperties = new Dictionary<string, object>();
+        var ruleService = GetService(entity.GetType(), typeof(TPermission)) as IEntityRule<TPermission>;
 
-        var ruleService = GetService(entity.GetType(), typeof(TPermission));
+        if (ruleService == null) throw new ArgumentNullException($"Missing service for rule {entity.GetType().FullName}");
 
-        var entityRule = ruleService as IEntityRule<TPermission>;
-        var permission = entityRule!.Permission;
+        var permission = ruleService.Permission;
 
         foreach (var property in properties)
         {
@@ -261,7 +264,7 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
                 continue;
             }
 
-            entityRule.ExecuteRules(property.Metadata.PropertyInfo.Name, property.CurrentValue, modifiedProperties);
+            ruleService.ExecuteRules(property.Metadata.PropertyInfo.Name, property.CurrentValue, modifiedProperties);
         }
 
         return new TrackedPropertiesWithPermission<TPermission>(permission, modifiedProperties.AsReadOnly());
@@ -283,11 +286,8 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         var openGenericType = typeof(IEntityRule<,>);
         var closedGenericType = openGenericType.MakeGenericType(types);
 
-        LogDebug($"GetService {closedGenericType.FullName}");
-
         var entityRule = _serviceProvider.GetService(closedGenericType);
-
-        if (entityRule is null)
+        if (entityRule == null)
         {
             throw new ArgumentNullException($"Missing service for rule {closedGenericType.FullName}");
         }
@@ -297,10 +297,12 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     protected void LogDebug(string logMessage)
     {
-        if (_logger != null)
-        {
-            _logger.LogDebug(logMessage);
-        }
+        _logger?.LogDebug(logMessage);
+    }
+
+    protected void LogError(string message, Exception exception)
+    {
+        _logger?.LogError(exception, message);
     }
 
     private async Task SendToConsumerAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrailData, CancellationToken cancellationToken = default)
@@ -315,10 +317,79 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
         }
         catch (Exception ex)
         {
-            if (_logger != null)
+            LogError("Send to audit trail consumer failed", ex);
+        }
+    }
+
+    private async Task RollbackTransactionAsync()
+    {
+        try
+        {
+            if (_transaction != null)
             {
-                _logger.LogError(ex, "Send to audit trail consumer failed");
+                await _transaction.RollbackAsync();
             }
         }
+        catch (Exception ex)
+        {
+            LogError("Rollback transaction failed", ex);
+        }
+    }
+
+    private async Task DisposeTransactionAsync()
+    {
+        if (_transaction != null)
+        {
+            await _transaction.DisposeAsync();
+            _transaction = null;
+        }
+    }
+
+    private void DisposeTransaction()
+    {
+        if (_transaction != null)
+        {
+            _transaction.Dispose();
+            _transaction = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+
+        if (disposing)
+        {
+            DisposeTransaction();
+        }
+
+        _disposed = true;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await DisposeAsyncCore();
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual async ValueTask DisposeAsyncCore()
+    {
+        if (_disposed)
+            return;
+
+        await DisposeTransactionAsync();
+        _disposed = true;
+    }
+
+    ~AuditTrailServiceBase()
+    {
+        Dispose(false);
     }
 }

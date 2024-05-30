@@ -1,7 +1,9 @@
 ﻿using AuditTrail.Abstractions;
+using AuditTrail.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using System.Threading;
 
 namespace AuditTrail.Interceptors;
 public class AuditTrailSaveInterceptor<TPermission>(IHttpContextAccessor httpContextAccessor) : SaveChangesInterceptor
@@ -46,13 +48,24 @@ public class AuditTrailSaveInterceptor<TPermission>(IHttpContextAccessor httpCon
     public override void SaveChangesFailed(DbContextErrorEventData eventData)
     {
         ClearSaveData();
+
+        var auditTrailService = GetAuditTrailService(httpContextAccessor);
+        auditTrailService?.SaveChangesFailedAsync(eventData).GetAwaiter().GetResult();
         base.SaveChangesFailed(eventData);
     }
 
-    public override Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
+    public override async Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
     {
         ClearSaveData();
-        return base.SaveChangesFailedAsync(eventData, cancellationToken);
+
+        var auditTrailService = GetAuditTrailService(httpContextAccessor);
+
+        if (auditTrailService != null)
+        {
+            await auditTrailService.SaveChangesFailedAsync(eventData, cancellationToken);
+        }
+
+        await base.SaveChangesFailedAsync(eventData, cancellationToken);
     }
 
     protected virtual IAuditTrailService<TPermission>? GetAuditTrailService(IHttpContextAccessor httpContextAccessor)
@@ -64,7 +77,12 @@ public class AuditTrailSaveInterceptor<TPermission>(IHttpContextAccessor httpCon
     {
         var auditTrailService = GetAuditTrailService(httpContextAccessor);
 
-        return auditTrailService?.SavingChangesStartedAsync(eventData, cancellationToken);
+        if (auditTrailService != null)
+        {
+            return auditTrailService.SavingChangesStartedAsync(eventData, cancellationToken);
+        }
+
+        return Task.CompletedTask;
     }
 
     private Task FinishSaveChanges(DbContextEventData eventData, CancellationToken cancellationToken = default)

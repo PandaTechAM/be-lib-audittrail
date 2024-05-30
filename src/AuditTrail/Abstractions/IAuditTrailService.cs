@@ -14,6 +14,7 @@ public interface IAuditTrailService<TPermission>
         DbContext context);
     Task FinishSaveChanges(DbContextEventData eventData, CancellationToken cancellationToken = default);
     Task SavingChangesStartedAsync(DbContextEventData eventData, CancellationToken cancellationToken = default);
+    Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default);
     void ClearTransactionData();
     void ClearSaveData();
 }
