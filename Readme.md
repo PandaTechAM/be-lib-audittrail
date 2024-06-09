@@ -41,11 +41,11 @@ public class AuditTrailConsumer<TPermission>() : IAuditTrailConsumer<TPermission
         // Handle tracked entites here.
    }
 
-   public async Task ConsumeTransactionAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> entitiesData, 
-        TransactionEndEventData dbContextEventData, 
+   public async Task BeforeSaveAsync(IEnumerable<AuditTrailDataBeforeSave<TPermission>> auditData, 
+        DbContextEventData eventData, 
         CancellationToken cancellationToken = default)
    {
-        // Handle tracked entites after transaction commit
+        // Handle tracked entites before transaction commit
    }
 }
 ```

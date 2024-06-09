@@ -1,9 +1,7 @@
 ﻿using AuditTrail.Abstractions;
-using AuditTrail.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
-using System.Threading;
 
 namespace AuditTrail.Interceptors;
 public class AuditTrailSaveInterceptor<TPermission>(IHttpContextAccessor httpContextAccessor) : SaveChangesInterceptor

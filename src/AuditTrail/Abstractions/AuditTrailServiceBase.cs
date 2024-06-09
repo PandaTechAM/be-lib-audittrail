@@ -5,14 +5,14 @@ using AuditTrail.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Data.Common;
 using System.Reflection;
 using System.Security;
-using System.Collections.Concurrent;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace AuditTrail.Abstractions;
 
