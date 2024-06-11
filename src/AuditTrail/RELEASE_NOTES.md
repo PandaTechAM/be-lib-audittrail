@@ -1,5 +1,9 @@
 # Release Notes
 
+## Version 1.2.7 - 2024-06-11
+- Removed methpd `BeforeTransactionCommitedAsync`.     
+- Added method `ConsumeAsync` with transaction parameters.		
+
 ## Version 1.2.0 - 2024-05-29
 - Added method `BeforeTransactionCommitedAsync` added for transaction support in the audit trail consumer service.
 - Removed method `ConsumeTransactionAsync` added for transaction support in the audit trail consumer service.

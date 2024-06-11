@@ -15,7 +15,7 @@ public abstract class EntityRule<TEntity, TPermission> : IEntityRule<TEntity, TP
         _permission = permission;
     }
 
-    public IRuleBulder<TEntity, TPermission, TProperty> RuleFor<TProperty>(Expression<Func<TEntity, TProperty>> expression)
+    public IRuleBuilder<TEntity, TPermission, TProperty> RuleFor<TProperty>(Expression<Func<TEntity, TProperty>> expression)
     {
         var rule = PropertyRule<TEntity, TProperty>.Create(expression);
         Rules.Add(rule);

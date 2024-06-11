@@ -7,9 +7,7 @@ namespace AuditTrail.Abstractions;
 
 public interface IAuditTrailConsumer<TPermission>
 {
-    Task ConsumeAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrailData, CancellationToken cancellationToken = default);
-
-    Task BeforeTransactionCommitedAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrailData, DbTransaction transaction, TransactionEventData eventData, CancellationToken cancellationToken = default);
+    Task ConsumeAsync(IEnumerable<AuditTrailDataAfterSave<TPermission>> auditTrailData, DbTransaction? transaction, TransactionEventData? eventData, CancellationToken cancellationToken = default);
 
     Task TransactionFinished(TransactionEventData dbContextEventData, TransactionStatus status, CancellationToken cancellationToken = default)
         => Task.CompletedTask;

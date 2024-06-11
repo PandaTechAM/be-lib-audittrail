@@ -217,9 +217,10 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
 
     public Task BeforeTransactionCommitedAsync(DbTransaction transaction, TransactionEventData eventData, CancellationToken cancellationToken = default)
     {
-        if (eventData.Context?.Database.CurrentTransaction != null && _auditTransactionData.Any())
+        if (eventData.Context?.Database.CurrentTransaction != null
+            && _auditTransactionData.Any(s => s.Action == AuditActionType.Update && s.ModifiedProperties.Any() || s.Action != AuditActionType.Update))
         {
-            return _auditTrailConsumer.BeforeTransactionCommitedAsync(_auditTransactionData, transaction, eventData, cancellationToken);
+            return _auditTrailConsumer.ConsumeAsync(_auditTransactionData, transaction, eventData, cancellationToken);
         }
 
         return Task.CompletedTask;
@@ -307,9 +308,9 @@ public abstract class AuditTrailServiceBase<TPermission> : IAuditTrailService<TP
     {
         try
         {
-            if (auditTrailData.Any())
+            if (auditTrailData.Any(s => s.Action == AuditActionType.Update && s.ModifiedProperties.Any() || s.Action != AuditActionType.Update))
             {
-                await _auditTrailConsumer.ConsumeAsync(auditTrailData, cancellationToken);
+                await _auditTrailConsumer.ConsumeAsync(auditTrailData, null, null, cancellationToken);
                 ClearTransactionData();
             }
         }

@@ -1,4 +1,4 @@
-﻿namespace AuditTrail.Extenssions;
+﻿namespace AuditTrail.Extensions;
 
 using AuditTrail.Abstractions;
 using AuditTrail.Fluent;
@@ -84,7 +84,7 @@ public static class ServiceExtensions
     /// <param name="filter">Optional filter that allows certain types to be skipped from registration.</param>
     /// <param name="includeInternalTypes">Include internal AuditTrail. The default is false.</param>
     /// <returns>AssemblyScanner</returns>
-    public static IServiceCollection AddAuditTrailWithDecryption<TPermission, TConsumer, TDecryption>(
+    public static IServiceCollection AddAuditTrail<TPermission, TConsumer, TDecryption>(
         this IServiceCollection services,
         IEnumerable<Assembly> assemblies,
         Action<AuditTrailOptions>? options = null,
@@ -112,67 +112,6 @@ public static class ServiceExtensions
     /// <param name="filter">Optional filter that allows certain types to be skipped from registration.</param>
     /// <param name="includeInternalTypes">Include internal AuditTrail. The default is false.</param>
     /// <returns>AssemblyScanner</returns>
-    public static IServiceCollection AddAuditTrail<TPermission, TConsumer, TInstance>(
-        this IServiceCollection services,
-        IEnumerable<Assembly> assemblies,
-        Action<AuditTrailOptions>? options = null,
-        ServiceLifetime lifetime = ServiceLifetime.Scoped,
-        Func<AssemblyScanner.AssemblyScanResult, bool> filter = null!,
-        bool includeInternalTypes = false)
-        where TConsumer : class, IAuditTrailConsumer<TPermission, TInstance>
-        where TInstance : class
-    {
-        services.AddHttpContextAccessor();
-        services.AddAuditTrailFromAssemblies<TInstance>(assemblies, lifetime, filter, includeInternalTypes);
-        services.AddScoped<IAuditTrailService<TPermission, TInstance>, AuditTrailService<TPermission, TInstance>>();
-        services.AddScoped(typeof(IAuditTrailConsumer<TPermission, TInstance>), typeof(TConsumer));
-        services.AddAuditTrailOptions(options);
-
-        services.AddSingleton<AuditTrailSaveInterceptor<TPermission, TInstance>>();
-        services.AddSingleton<AuditTrailDbTransactionInterceptor<TPermission, TInstance>>();
-
-        return services;
-    }
-
-    /// <summary>
-    /// Add AddAuditTrail which includes AuditTrail services
-    /// </summary>
-    /// <param name="TPermission">Type taht will be set in rule configuration for each entity rule</param>
-    /// <param name="TConsumer">The implementation of IAuditTrailConsumer interface</param>
-    /// <param name="TInstance">The DbContext or any class</param>
-    /// <param name="services">The collection of services</param>
-    /// <param name="assemblies">The assemblies to scan</param>
-    /// <param name="lifetime">The lifetime of the AuditTrail. The default is scoped (per-request in web application)</param>
-    /// <param name="filter">Optional filter that allows certain types to be skipped from registration.</param>
-    /// <param name="includeInternalTypes">Include internal AuditTrail. The default is false.</param>
-    /// <returns>AssemblyScanner</returns>
-    public static IServiceCollection AddAuditTrail<TPermission, TConsumer, TInstance>(
-        this IServiceCollection services,
-        Assembly assembly,
-        Action<AuditTrailOptions>? options = null,
-        ServiceLifetime lifetime = ServiceLifetime.Scoped,
-        Func<AssemblyScanner.AssemblyScanResult, bool> filter = null!,
-        bool includeInternalTypes = false)
-        where TConsumer : class, IAuditTrailConsumer<TPermission, TInstance>
-        where TInstance : class
-    {
-        services.AddAuditTrail<TPermission, TConsumer, TInstance>([assembly], options, lifetime, filter, includeInternalTypes);
-
-        return services;
-    }
-
-    /// <summary>
-    /// Add AddAuditTrail which includes AuditTrail services
-    /// </summary>
-    /// <param name="TPermission">Type taht will be set in rule configuration for each entity rule</param>
-    /// <param name="TConsumer">The implementation of IAuditTrailConsumer interface</param>
-    /// <param name="TInstance">The DbContext or any class</param>
-    /// <param name="services">The collection of services</param>
-    /// <param name="assemblies">The assemblies to scan</param>
-    /// <param name="lifetime">The lifetime of the AuditTrail. The default is scoped (per-request in web application)</param>
-    /// <param name="filter">Optional filter that allows certain types to be skipped from registration.</param>
-    /// <param name="includeInternalTypes">Include internal AuditTrail. The default is false.</param>
-    /// <returns>AssemblyScanner</returns>
     public static IServiceCollection AddAuditTrail<TPermission, TConsumer, TDecryption, TInstance>(
         this IServiceCollection services,
         IEnumerable<Assembly> assemblies,
@@ -184,9 +123,15 @@ public static class ServiceExtensions
         where TDecryption : class, IAuditTrailDecryption
         where TInstance : class
     {
-        services.AddAuditTrail<TPermission, TConsumer, TInstance>(assemblies, options, lifetime, filter, includeInternalTypes);
+        services.AddHttpContextAccessor();
+        services.AddAuditTrailFromAssemblies<TInstance>(assemblies, lifetime, filter, includeInternalTypes);
+        services.AddScoped<IAuditTrailService<TPermission, TInstance>, AuditTrailService<TPermission, TInstance>>();
+        services.AddScoped(typeof(IAuditTrailConsumer<TPermission, TInstance>), typeof(TConsumer));
         services.AddScoped(typeof(IAuditTrailDecryption), typeof(TDecryption));
         services.AddAuditTrailOptions(options);
+
+        services.AddSingleton<AuditTrailSaveInterceptor<TPermission, TInstance>>();
+        services.AddSingleton<AuditTrailDbTransactionInterceptor<TPermission, TInstance>>();
 
         return services;
     }
@@ -244,7 +189,7 @@ public static class ServiceExtensions
     /// <param name="includeInternalTypes">Include internal AuditTrail. The default is false.</param>
     /// <returns>AssemblyScanner</returns>
     public static AssemblyScanner CreateAuditTrailAssemblyScannerFromAssembly(this IServiceCollection services,
-        Assembly assembly, ServiceLifetime lifetime = ServiceLifetime.Scoped,
+        Assembly assembly, ServiceLifetime lifetime = ServiceLifetime.Scoped, 
         Func<AssemblyScanner.AssemblyScanResult, bool> filter = null!,
         bool includeInternalTypes = false)
     {
@@ -263,10 +208,10 @@ public static class ServiceExtensions
     /// <param name="filter">Optional filter that allows certain types to be skipped from registration.</param>
     /// <param name="includeInternalTypes">Include internal AuditTrail. The default is false.</param>
     /// <returns></returns>
-	public static IServiceCollection AddAuditTrailFromAssemblies<TInstance>(this IServiceCollection services,
-        IEnumerable<Assembly> assemblies,
+	public static IServiceCollection AddAuditTrailFromAssemblies<TInstance>(this IServiceCollection services, 
+        IEnumerable<Assembly> assemblies, 
         ServiceLifetime lifetime = ServiceLifetime.Scoped,
-        Func<AssemblyScanner.AssemblyScanResult, bool> filter = null!,
+        Func<AssemblyScanner.AssemblyScanResult, bool> filter = null!, 
         bool includeInternalTypes = false)
     {
         ArgumentNullException.ThrowIfNull(assemblies);
