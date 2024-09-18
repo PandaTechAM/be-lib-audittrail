@@ -1,50 +1,46 @@
-﻿using AuditTrail.Fluent.Abstractions;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
+using AuditTrail.Fluent.Abstractions;
 
 namespace AuditTrail.Fluent;
+
 public class PropertyRule<TEntity, TProperty> : IPropertyRule<TEntity, TProperty>
 {
-    private readonly List<IPropertyRule<TEntity, TProperty>> _propertyRules = new();
+   private readonly List<IPropertyRule<TEntity, TProperty>> _propertyRules = new();
 
-    private readonly string _propertyName = "";
-    public string PropertyName => _propertyName;
+   public PropertyRule()
+   {
+   }
 
-    public IReadOnlyList<IPropertyRule<TEntity, TProperty>> ProperyRules => _propertyRules.AsReadOnly();
+   public PropertyRule(Expression<Func<TEntity, TProperty>> expression)
+   {
+      var body = expression.Body as MemberExpression
+                 ?? throw new ArgumentException("Invalid property");
 
-    public PropertyRule() { }
+      PropertyName = body.Member.Name
+                     ?? throw new ArgumentException("Invalid property name");
+   }
 
-    public void Add(IPropertyRule<TEntity, TProperty> rule)
-    {
-        _propertyRules.Add(rule);
-    }
+   public string PropertyName { get; } = "";
 
-    public virtual NameValue ExecuteRule(string name, object value)
-    {
-        NameValue? result = new NameValue(name, value);
+   public void Add(IPropertyRule<TEntity, TProperty> rule)
+   {
+      _propertyRules.Add(rule);
+   }
 
-        foreach (IPropertyRule<TEntity, TProperty> item in _propertyRules)
-        {
-            result = item.ExecuteRule(result.name, result.value);
-            if (result is null || result.Name is null)
-            {
-                return null!;
-            }
-        }
+   public virtual NameValue ExecuteRule(string name, object value)
+   {
+      var result = new NameValue(name, value);
 
-        return result;
-    }
+      foreach (var item in _propertyRules)
+      {
+         result = item.ExecuteRule(result.name, result.value!);
+      }
 
-    public static IPropertyRule<TEntity, TProperty> Create(Expression<Func<TEntity, TProperty>> expression)
-    {
-        return new PropertyRule<TEntity, TProperty>(expression);
-    }
+      return result;
+   }
 
-    public PropertyRule(Expression<Func<TEntity, TProperty>> expression)
-    {
-        MemberExpression body = expression.Body as MemberExpression
-            ?? throw new ArgumentException("Invalid property");
-
-        _propertyName = body.Member.Name
-            ?? throw new ArgumentException("Invalid property name");
-    }
+   public static IPropertyRule<TEntity, TProperty> Create(Expression<Func<TEntity, TProperty>> expression)
+   {
+      return new PropertyRule<TEntity, TProperty>(expression);
+   }
 }

@@ -1,51 +1,48 @@
-﻿using AuditTrail.Fluent.Abstractions;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
+using AuditTrail.Fluent.Abstractions;
 
 namespace AuditTrail.Fluent;
 
 public abstract class EntityRule<TEntity, TPermission> : IEntityRule<TEntity, TPermission> where TEntity : class
 {
-    private readonly List<IPropertyRule<TEntity>> Rules = new();
+   private readonly List<IPropertyRule<TEntity>> _rules = [];
 
-    private TPermission? _permission;
-    public TPermission? Permission => _permission;
+   public TPermission? Permission { get; private set; }
 
-    public void SetPermission(TPermission permission)
-    {
-        _permission = permission;
-    }
+   public virtual void ExecuteRules(string propertyName, object? value, Dictionary<string, object?> modifiedProperties)
+   {
+      var rules = _rules.Where(s => s.PropertyName.Equals(propertyName));
 
-    public IRuleBuilder<TEntity, TPermission, TProperty> RuleFor<TProperty>(Expression<Func<TEntity, TProperty>> expression)
-    {
-        var rule = PropertyRule<TEntity, TProperty>.Create(expression);
-        Rules.Add(rule);
-        return new RuleBulder<TEntity, TPermission, TProperty>(rule, this);
-    }
+      if (!rules.Any())
+      {
+         modifiedProperties.Add(propertyName, value);
+         return;
+      }
 
-    public virtual void ExecuteRules(string propertyName, object? value, Dictionary<string, object?> modifiedProperties)
-    {
-        var rules = Rules.Where(s => s.PropertyName.Equals(propertyName));
+      foreach (var rule in rules)
+      {
+         var result = rule.ExecuteRule(propertyName, value!);
+         modifiedProperties.Add(result.Name, result.Value);
+      }
+   }
 
-        if (!rules.Any())
-        {
-            modifiedProperties.Add(propertyName, value);
-            return;
-        }
+   public void SetPermission(TPermission permission)
+   {
+      Permission = permission;
+   }
 
-        foreach (IPropertyRule<TEntity> rule in rules)
-        {
-            var result = rule.ExecuteRule(propertyName, value);
-            if (result != null && result.Name != null)
-            {
-                modifiedProperties.Add(result.Name, result.Value);
-            }
-        }
-    }
+   public IRuleBuilder<TEntity, TPermission, TProperty> RuleFor<TProperty>(
+      Expression<Func<TEntity, TProperty>> expression)
+   {
+      var rule = PropertyRule<TEntity, TProperty>.Create(expression);
+      _rules.Add(rule);
+      return new RuleBulder<TEntity, TPermission, TProperty>(rule, this);
+   }
 }
 
 public abstract class EntityRule<TEntity, TPermission, TInstance> :
-    EntityRule<TEntity, TPermission>, IEntityRule<TEntity, TPermission, TInstance>
-    where TEntity : class
-    where TInstance : class
+   EntityRule<TEntity, TPermission>, IEntityRule<TEntity, TPermission, TInstance>
+   where TEntity : class
+   where TInstance : class
 {
 }

@@ -1,6 +1,7 @@
 ﻿namespace AuditTrail.Fluent.Abstractions;
+
 public interface IRuleBuilder<TEntity, TPermission, TProperty>
-    where TEntity : class
+   where TEntity : class
 {
-    IRuleBuilder<TEntity, TPermission, TProperty> SetRule(IPropertyRule<TEntity, TProperty> rule);
+   IRuleBuilder<TEntity, TPermission, TProperty> SetRule(IPropertyRule<TEntity, TProperty> rule);
 }

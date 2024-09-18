@@ -2,31 +2,31 @@
 
 public class ChangeValuePropertyRule<T, TProperty> : PropertyRule<T, TProperty?>
 {
-    private readonly Func<TProperty?, object?> _changeValue;
+   private readonly Func<TProperty?, object?> _changeValue;
 
-    public override NameValue ExecuteRule(string name, object value)
-    {
-        TProperty? prop = default;
+   public ChangeValuePropertyRule(Func<TProperty?, object?> changeValue)
+   {
+      _changeValue = changeValue;
+   }
 
-        if (value is TProperty)
-        {
-            prop = (TProperty)value;
-        }
-        else if (value == null)
-        {
-            prop = default;
-        }
-        else
-        {
-            throw new InvalidCastException($"Cannot cast {value.GetType()} to {typeof(TProperty)}");
-        }
+   public override NameValue ExecuteRule(string name, object value)
+   {
+      TProperty? prop = default;
 
-        var customValue = _changeValue(prop);
-        return new NameValue(name, customValue);
-    }
+      if (value is TProperty)
+      {
+         prop = (TProperty)value;
+      }
+      else if (value == null)
+      {
+         prop = default;
+      }
+      else
+      {
+         throw new InvalidCastException($"Cannot cast {value.GetType()} to {typeof(TProperty)}");
+      }
 
-    public ChangeValuePropertyRule(Func<TProperty?, object?> changeValue)
-    {
-        _changeValue = changeValue;
-    }
+      var customValue = _changeValue(prop);
+      return new NameValue(name, customValue);
+   }
 }
