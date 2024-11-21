@@ -2,16 +2,16 @@
 
 public interface IEntityRule<TPermission>
 {
-    public TPermission? Permission { get; }
-    void ExecuteRules(string propertyName, object? value, Dictionary<string, object> modifiedProperties);
+   public TPermission? Permission { get; }
+   void ExecuteRules(string propertyName, object? value, Dictionary<string, object> modifiedProperties);
 }
 
 public interface IEntityRule<TEntity, TPermission>
-    : IEntityRule<TPermission>
+   : IEntityRule<TPermission>
 {
 }
 
 public interface IEntityRule<TEntity, TPermission, TInstance> :
-    IEntityRule<TEntity, TPermission>
+   IEntityRule<TEntity, TPermission>
 {
 }

@@ -1,23 +1,24 @@
 ﻿using AuditTrail.Fluent.Abstractions;
 
 namespace AuditTrail.Fluent;
+
 public class RuleBulder<TEntity, TPermission, TProperty> :
-    IRuleBuilder<TEntity, TPermission, TProperty>
-    where TEntity : class
+   IRuleBuilder<TEntity, TPermission, TProperty>
+   where TEntity : class
 {
-    public IPropertyRule<TEntity, TProperty> Rule { get; }
+   public RuleBulder(IPropertyRule<TEntity, TProperty> propertyRule, EntityRule<TEntity, TPermission> parent)
+   {
+      Rule = propertyRule;
+      Parent = parent;
+   }
 
-    public EntityRule<TEntity, TPermission> Parent { get; }
+   public IPropertyRule<TEntity, TProperty> Rule { get; }
 
-    public RuleBulder(IPropertyRule<TEntity, TProperty> propertyRule, EntityRule<TEntity, TPermission> parent)
-    {
-        Rule = propertyRule;
-        Parent = parent;
-    }
+   public EntityRule<TEntity, TPermission> Parent { get; }
 
-    public IRuleBuilder<TEntity, TPermission, TProperty> SetRule(IPropertyRule<TEntity, TProperty> rule)
-    {
-        Rule.Add(rule);
-        return this;
-    }
+   public IRuleBuilder<TEntity, TPermission, TProperty> SetRule(IPropertyRule<TEntity, TProperty> rule)
+   {
+      Rule.Add(rule);
+      return this;
+   }
 }

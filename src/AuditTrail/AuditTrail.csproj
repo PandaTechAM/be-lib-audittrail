@@ -1,25 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <Authors>Pandatech</Authors>
         <Copyright>MIT</Copyright>
         <PackageIcon>pandatech.png</PackageIcon>
         <PackageReadmeFile>Readme.md</PackageReadmeFile>
-        <Version>1.2.8</Version>
+        <Version>2.0.0</Version>
         <PackageId>Pandatech.AuditTrail</PackageId>
         <PackageTags>Pandatech, library, Track Entities, Track Entity Properties, Audit Entities, Audit Entity Properties</PackageTags>
         <Title>AuditTrail</Title>
         <Description>Collect essential audit data from Entity Framework Core's ChangeTracker.</Description>
         <RepositoryUrl>https://github.com/PandaTechAM/be-lib-audittrail</RepositoryUrl>
-        <PackageReleaseNotes>Breaking changes -> Rename "AuditTrailCommanModel" into "AuditTrailDataAfterSave" and "AuditTrailEntityData" into "AuditTrailDataBeforeSave"</PackageReleaseNotes>
+        <PackageReleaseNotes>.Net 9 upgrade</PackageReleaseNotes>
         <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     </PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.4" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.0" />
 		<PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
 	</ItemGroup>
 

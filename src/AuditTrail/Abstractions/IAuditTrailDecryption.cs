@@ -1,5 +1,6 @@
 ﻿namespace AuditTrail.Abstractions;
+
 public interface IAuditTrailDecryption
 {
-    string? Decrypt(byte[]? cipherText, bool includesHash);
+   string? Decrypt(byte[]? cipherText, bool includesHash);
 }
